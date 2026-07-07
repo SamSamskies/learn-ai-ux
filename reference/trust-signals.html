@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Trust Signals</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Trust Signals</h1>
+  <p class="dek">UI that helps users judge <em>whether</em> to believe an AI output — and <em>how hard</em> to verify it.</p>
+
+  <h2>The three signals</h2>
+  <table>
+    <thead>
+      <tr><th>Signal</th><th>What it answers</th><th>Where it lives</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Provenance</strong></td>
+        <td>What tools or retrieval backed this answer? (web search, uploaded docs, model-only)</td>
+        <td>Near the headline — scan height, not a footer footnote</td>
+      </tr>
+      <tr>
+        <td><strong>Sources</strong></td>
+        <td>Which specific materials were cited? Can I click through?</td>
+        <td>Pills or inline markers; count visible even when the list is below</td>
+      </tr>
+      <tr>
+        <td><strong>Calibrated uncertainty</strong></td>
+        <td>How well do the sources support this answer?</td>
+        <td>Human copy + visual tone — never a raw enum like <code>high</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Calibrated confidence copy</h2>
+  <p>Your schema already emits <code>low | medium | high</code>. The UI job is to translate that into honest, actionable language — not to pretend precision you don't have.</p>
+  <table>
+    <thead>
+      <tr><th>Level</th><th>User-facing copy (example)</th><th>Tone</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip">high</span></td>
+        <td>Well-supported by retrieved sources</td>
+        <td>Neutral-positive — still invites spot-checking</td>
+      </tr>
+      <tr>
+        <td><span class="chip">medium</span></td>
+        <td>Partially supported — verify key claims</td>
+        <td>Caution — nudge toward sources</td>
+      </tr>
+      <tr>
+        <td><span class="chip">low</span></td>
+        <td>Limited source coverage — treat as a draft</td>
+        <td>Warning — don't bury this in footer text</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Common mistakes</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Raw enum in the UI</strong></td><td><code>Confidence: high</code> reads like internal telemetry, not a trust signal.</td></tr>
+      <tr><td><strong>Sources only at the bottom</strong></td><td>Users who don't scroll never see citations — trust becomes unconditional.</td></tr>
+      <tr><td><strong>False confidence</strong></td><td>Green checkmarks on every answer erode trust faster than honest caveats.</td></tr>
+      <tr><td><strong>Hiding missing sources</strong></td><td>If nothing was cited, say so. Empty states maintain trust; filler erodes it.</td></tr>
+      <tr><td><strong>Citations without links</strong></td><td>A pill with a title but no URL is decoration, not verification.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Scan-height layout</h2>
+  <p>Put the trust bar directly under the headline badge — before the summary paragraph. The user should know <em>how grounded</em> this answer is before they read a word of synthesis.</p>
+  <pre><code>[ Research Brief ]
+Headline
+┌─ Trust bar ─────────────────────────────────┐
+│ ● Well-supported   🌐 Web  📄 Docs  3 sources │
+└─────────────────────────────────────────────┘
+Summary paragraph…
+Key points…
+Sources &amp; Citations (full list)</code></pre>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://www.shapeof.ai/patterns/citations">Shape of AI · Citations</a> ·
+    <a href="https://www.shapeof.ai/pattern-types/trust-builders">Shape of AI · Trust Builders</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="perceived-latency.html">← Perceived latency</a></span>
+    <span><a href="../lessons/0005-calibrated-trust-bar.html">Lesson 0005</a></span>
+  </div>
+</div>
+</body>
+</html>

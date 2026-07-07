@@ -35,3 +35,11 @@ _Avoid_: fetch error, API error
 **Friendly error mapping**:
 Translating raw SDK or HTTP error text into specific, blame-free, actionable product copy — never showing `error.message` directly to users.
 _Avoid_: error handling, error messages
+
+**Trust signal**:
+A UI element that helps users judge whether to believe an AI output and how hard to verify it — provenance chips, source links, calibrated confidence.
+_Avoid_: trust badge, credibility indicator
+
+**Calibrated uncertainty**:
+Surfacing model confidence as honest, actionable copy ("verify key claims") rather than raw enum values or false precision.
+_Avoid_: confidence score, certainty level

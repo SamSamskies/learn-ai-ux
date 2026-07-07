@@ -19,6 +19,8 @@
   Real examples (Claude's AskUserQuestion, Google AI Mode checkboxes) of simple GUI widgets injected into chat to reduce friction. Use for: human-in-the-loop and hybrid-input lessons.
 - [The Trust-Latency Gap — UX Collective](https://uxdesign.cc/the-trust-latency-gap-why-the-future-of-ux-is-intentionally-slower-3433c1787d5e)
   Argues that as AI execution nears zero latency, trust needs *strategic friction* — deliberate speed bumps that build confidence. Use for: perceived-latency and confirmation-flow lessons.
+- [Shape of AI — Citations pattern](https://www.shapeof.ai/patterns/citations)
+  Where to place citations, metadata for scanning, hover previews, and why missing sources must be explicit. Use for: trust-signal and citation lessons.
 
 ### Implementation (stack)
 - [Vercel AI SDK — Chatbot (useChat)](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot)

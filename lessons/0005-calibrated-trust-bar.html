@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0005 · Calibrated Trust Bar</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0005</p>
+  <h1>Calibrated Trust Bar</h1>
+  <p class="dek">The wait is legible now. The next win is <em>trust</em> — surfacing provenance, source count, and calibrated uncertainty at scan height so users know how hard to verify before they read a word of synthesis.</p>
+
+  <h2>Where you actually are</h2>
+  <p>Your <code>BriefArticle</code> already renders source pills and a confidence value. But they're buried in the footer, and confidence shows up as raw enum text:</p>
+
+  <div class="callout warn">
+    <span class="label">Gap 1 — trust signals below the fold</span>
+    <p>Sources and provenance live after the summary and key points. Most users read the headline and first paragraph — then decide whether to trust. Citations they never see don't build trust.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="label">Gap 2 — uncalibrated confidence</span>
+    <p><code>Confidence: {brief.confidence}</code> renders <code>high</code>, <code>medium</code>, or <code>low</code> — internal telemetry, not a trust signal. Users can't act on it.</p>
+  </div>
+
+  <h2>The principle</h2>
+  <p><strong>Trust signals</strong> help users judge whether to believe an output and how hard to verify it. Three rules from the <a href="https://www.shapeof.ai/patterns/citations">Shape of AI citations pattern</a>:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Place signals where people expect them</strong></td><td>Scan height — under the headline, before the summary. Consistency beats polish.</td></tr>
+      <tr><td><strong>Calibrate, don't pretend</strong></td><td>Translate <code>confidence</code> into honest copy. A green check on every answer erodes trust faster than a caveat.</td></tr>
+      <tr><td><strong>Make gaps explicit</strong></td><td>Zero sources cited? Say so. Hiding missing provenance is worse than showing it.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary source (skim both)</span>
+    <a href="https://www.shapeof.ai/patterns/citations">Shape of AI · Citations</a> — where to place citations, metadata for scanning, and why missing sources must be explicit. Pair with <a href="https://www.shapeof.ai/pattern-types/trust-builders">Trust Builders</a> for the broader pattern category.
+  </div>
+
+  <h2>Build it (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create <code>lib/confidence-copy.ts</code>.</strong> One lookup table — enum in, calibrated copy + tone out:</p>
+<pre><code><span class="tok-key">import type</span> { ResearchBrief } <span class="tok-key">from</span> <span class="tok-str">"@/lib/schemas"</span>;
+
+<span class="tok-key">export type</span> ConfidenceLevel = ResearchBrief[<span class="tok-str">"confidence"</span>];
+
+<span class="tok-key">export function</span> confidenceCopy(level: ConfidenceLevel): {
+  label: string;
+  tone: <span class="tok-str">"positive"</span> | <span class="tok-str">"caution"</span> | <span class="tok-str">"warning"</span>;
+} {
+  <span class="tok-key">switch</span> (level) {
+    <span class="tok-key">case</span> <span class="tok-str">"high"</span>:
+      <span class="tok-key">return</span> {
+        label: <span class="tok-str">"Well-supported by retrieved sources"</span>,
+        tone: <span class="tok-str">"positive"</span>,
+      };
+    <span class="tok-key">case</span> <span class="tok-str">"medium"</span>:
+      <span class="tok-key">return</span> {
+        label: <span class="tok-str">"Partially supported — verify key claims"</span>,
+        tone: <span class="tok-str">"caution"</span>,
+      };
+    <span class="tok-key">case</span> <span class="tok-str">"low"</span>:
+      <span class="tok-key">return</span> {
+        label: <span class="tok-str">"Limited source coverage — treat as a draft"</span>,
+        tone: <span class="tok-str">"warning"</span>,
+      };
+  }
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Add <code>TrustBar</code></strong> in <code>components/ResearchChat/TrustBar.tsx</code> — provenance chips, source count, and confidence badge in one scannable row:</p>
+<pre><code><span class="tok-key">import</span> { confidenceCopy } <span class="tok-key">from</span> <span class="tok-str">"@/lib/confidence-copy"</span>;
+<span class="tok-key">import type</span> { ResearchBrief } <span class="tok-key">from</span> <span class="tok-str">"@/lib/schemas"</span>;
+<span class="tok-key">import type</span> { Source } <span class="tok-key">from</span> <span class="tok-str">"@/lib/research-state"</span>;
+<span class="tok-key">import</span> { dedupeSources } <span class="tok-key">from</span> <span class="tok-str">"@/lib/research-state"</span>;
+
+<span class="tok-key">const</span> toneClass = {
+  positive: <span class="tok-str">"border-good/30 bg-good/5 text-good"</span>,
+  caution: <span class="tok-str">"border-warn/30 bg-warn/5 text-warn"</span>,
+  warning: <span class="tok-str">"border-accent/30 bg-accent-soft text-accent"</span>,
+} <span class="tok-key">as const</span>;
+
+<span class="tok-key">export function</span> TrustBar({
+  brief,
+  sources,
+  searched,
+  searchedDocs,
+}: {
+  brief: ResearchBrief;
+  sources: Source[];
+  searched: boolean;
+  searchedDocs: boolean;
+}) {
+  <span class="tok-key">const</span> { label, tone } = confidenceCopy(brief.confidence);
+  <span class="tok-key">const</span> count = dedupeSources(sources).length;
+
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span>
+      className=<span class="tok-str">"mt-4 flex flex-wrap items-center gap-2"</span>
+      aria-label=<span class="tok-str">"Trust and provenance"</span>
+    &gt;
+      &lt;<span class="tok-key">span</span>
+        className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${toneClass[tone]}`}
+      &gt;
+        {label}
+      &lt;/<span class="tok-key">span</span>&gt;
+
+      {searched &amp;&amp; (
+        &lt;<span class="tok-key">span</span> className=<span class="tok-str">"rounded-lg border border-outline-variant px-2.5 py-1 text-xs text-on-surface-variant"</span>&gt;
+          Web search
+        &lt;/<span class="tok-key">span</span>&gt;
+      )}
+      {searchedDocs &amp;&amp; (
+        &lt;<span class="tok-key">span</span> className=<span class="tok-str">"rounded-lg border border-outline-variant px-2.5 py-1 text-xs text-on-surface-variant"</span>&gt;
+          Your documents
+        &lt;/<span class="tok-key">span</span>&gt;
+      )}
+      {!searched &amp;&amp; !searchedDocs &amp;&amp; (
+        &lt;<span class="tok-key">span</span> className=<span class="tok-str">"rounded-lg border border-outline-variant px-2.5 py-1 text-xs text-on-surface-variant"</span>&gt;
+          Model knowledge only
+        &lt;/<span class="tok-key">span</span>&gt;
+      )}
+
+      {count &gt; 0 ? (
+        &lt;<span class="tok-key">a</span>
+          href=<span class="tok-str">"#brief-sources"</span>
+          className=<span class="tok-str">"rounded-lg border border-outline-variant px-2.5 py-1 text-xs text-primary hover:bg-surface-container-low"</span>
+        &gt;
+          {count} {count === 1 ? <span class="tok-str">"source"</span> : <span class="tok-str">"sources"</span>}
+        &lt;/<span class="tok-key">a</span>&gt;
+      ) : (
+        &lt;<span class="tok-key">span</span> className=<span class="tok-str">"text-xs text-on-surface-variant"</span>&gt;
+          No sources cited
+        &lt;/<span class="tok-key">span</span>&gt;
+      )}
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+}</code></pre>
+      <p>Map <code>tone</code> to your existing Tailwind tokens — or use neutral borders if you prefer a quieter bar. The copy matters more than the color.</p>
+    </li>
+
+    <li>
+      <p><strong>Wire it into <code>BriefArticle</code></strong> — trust bar after the headline, anchor on the sources section, delete the footer dump:</p>
+<pre><code><span class="tok-key">import</span> { TrustBar } <span class="tok-key">from</span> <span class="tok-str">"./TrustBar"</span>;
+
+<span class="tok-com">// after &lt;h2&gt;{brief.headline}&lt;/h2&gt;:</span>
+&lt;<span class="tok-key">TrustBar</span>
+  brief={brief}
+  sources={sources}
+  searched={searched}
+  searchedDocs={searchedDocs}
+/&gt;
+
+<span class="tok-com">// on the sources block:</span>
+&lt;<span class="tok-key">div</span> id=<span class="tok-str">"brief-sources"</span> className=<span class="tok-str">"mt-8 scroll-mt-4"</span>&gt;
+
+<span class="tok-com">// remove the footer &lt;div&gt; with "Grounded with…" and "Confidence:"</span></code></pre>
+    </li>
+
+    <li>
+      <p><strong>Test three scenarios.</strong> Ask questions that hit different trust profiles:</p>
+      <ul>
+        <li><strong>Web-grounded:</strong> a current-events question → web chip + source count + high/medium confidence</li>
+        <li><strong>Doc-grounded:</strong> upload a PDF, ask about it → "Your documents" chip + file source pills</li>
+        <li><strong>Thin coverage:</strong> an obscure niche question → low confidence copy + "No sources cited" if annotations are empty</li>
+      </ul>
+      <p>The trust bar should be visible without scrolling past the headline.</p>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">What you ship</span>
+    <p>Scan-height trust — provenance, source count, and <a href="../reference/trust-signals.html">calibrated uncertainty</a> before the synthesis. Next up: <strong>human-in-the-loop</strong> (confirm-before-send on destructive actions) or <strong>inline citations</strong> if you want claim-level verification.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why is <code>Confidence: high</code> worse than calibrated copy?</summary>
+    <p>It exposes internal schema values users can't act on. Calibrated copy tells them <em>what to do</em> — verify key claims, treat as draft — which is the point of a trust signal.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When should you show "No sources cited" instead of hiding the sources row?</summary>
+    <p>Whenever <code>dedupeSources(sources)</code> is empty after a completed brief. Explicit gaps maintain trust; users assume uncited answers are verified when you stay silent.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When you've made the edits, tell me and I'll review the trust bar across web, doc, and thin-coverage scenarios. Want help with inline citation markers next? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0004-legible-thinking-gap.html">← 0004: Legible Thinking Gap</a></span>
+    <span><a href="../reference/trust-signals.html">Reference: trust signals</a></span>
+    <span>Next: human-in-the-loop (0006)</span>
+  </div>
+</div>
+</body>
+</html>
