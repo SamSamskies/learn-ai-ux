@@ -20,3 +20,12 @@
 ## Open threads
 - Exercises land in the real research-assistant codebase (local clone).
 - Decide whether he wants AI Elements (Vercel's prebuilt AI components) or hand-rolled components for the retrofit.
+
+## Future topics (backlog)
+- **Voice, Realtime & Multimodal** — wants to cover at some point. Text is only one surface; voice/multimodal is one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to his frontend background (hard interface problem). Concepts to hit:
+  - Speech-to-speech and realtime interaction
+  - Interruption / barge-in and turn-taking
+  - Partial transcripts and live "thinking" cues (audio + visual)
+  - Multimodal I/O — vision input, image and audio output
+  - Latency budgets for realtime (where "fast enough" is a hard requirement, not a nicety)
+  - Tools: OpenAI Realtime API (speech-to-speech, low-latency voice agents)

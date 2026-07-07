@@ -11,6 +11,16 @@ I'm a 10+ year frontend engineer becoming an AI Product Engineer. My edge over b
 - I can reason about **perceived latency** (acknowledge instantly, make progress legible, know when to add strategic friction) and apply optimistic updates.
 - I have at least one before/after I can point to and explain the UX decisions behind.
 
+## Next horizon (planned, after the text-surface core)
+Text is only one surface. Voice and multimodal are one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to my frontend background — it's exactly the kind of hard interface problem I want to own. Once the text-surface retrofit is solid, extend into:
+- **Speech-to-speech and realtime interaction** — low-latency voice agents.
+- **Interruption / barge-in and turn-taking** — letting the user talk over the agent and handing control back cleanly.
+- **Partial transcripts and live "thinking" cues** — both audio and visual.
+- **Multimodal I/O** — vision input, image and audio output.
+- **Latency budgets for realtime** — where "fast enough" is a hard requirement, not a nicety.
+
+Primary tool: OpenAI Realtime API (speech-to-speech, low-latency voice agents).
+
 ## Constraints
 - **Time:** ~20 min per lesson — one tangible win per session.
 - **Format:** short concept explainer, then a hands-on build/exercise in a real repo. Build-heavy.

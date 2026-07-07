@@ -28,6 +28,10 @@
 - [vercel/ai — chat.ts source (ChatStatus)](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat.ts)
   The source of truth for the status state machine and abort handling. Use for: when docs are ambiguous about edge cases (abort, network errors).
 
+### Voice, realtime & multimodal (next horizon)
+- [OpenAI Realtime API — docs](https://platform.openai.com/docs/guides/realtime)
+  Speech-to-speech, low-latency voice agents over WebRTC/WebSocket. Handles audio in/out, interruption/barge-in, and turn detection server-side. Use for: the realtime interaction, barge-in/turn-taking, and latency-budget lessons when the mission extends past the text surface.
+
 ## Wisdom (Communities)
 - [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)
   Use for: critique of interaction patterns and before/after retrofits.
