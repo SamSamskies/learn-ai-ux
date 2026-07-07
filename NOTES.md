@@ -14,9 +14,9 @@
 
 ## Retrofit target
 - The Phase 1 **research assistant** is the project we're improving throughout Phase 2.
-- Repo: `github.com/SamSamskies/learnopenai/tree/main/research-assistant` (Next.js App Router). Main component: `components/ResearchChat.tsx`. Custom streaming: server emits a `data-research` UI-message part carrying `ResearchUIState` (`lib/research-state.ts`), read via `lib/read-research-stream.ts`. Uses `useChat` from `@ai-sdk/react` + `DefaultChatTransport`. Tailwind w/ Material-ish design tokens. **TODO:** confirm whether he has this cloned locally in a path I can edit, or if lessons should stay code-snippet-based.
+- Repo: `github.com/SamSamskies/learnopenai/tree/main/research-assistant` (Next.js App Router). Main component: `components/ResearchChat.tsx`. Custom streaming: server emits a `data-research` UI-message part carrying `ResearchUIState` (`lib/research-state.ts`), read via `lib/read-research-stream.ts`. Uses `useChat` from `@ai-sdk/react` + `DefaultChatTransport`. Tailwind w/ Material-ish design tokens. Exercises target a local clone of this repo.
 - Notable: he already streams *labeled steps* + progressive structured output — more advanced than the Lesson 0001 baseline.
 
 ## Open threads
-- Is the research-assistant repo cloned locally somewhere I can edit directly? (Currently only reading it from GitHub.)
+- Exercises land in the real research-assistant codebase (local clone).
 - Decide whether he wants AI Elements (Vercel's prebuilt AI components) or hand-rolled components for the retrofit.

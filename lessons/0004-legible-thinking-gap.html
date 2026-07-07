@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0004 · Legible Thinking Gap</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0004</p>
+  <h1>Legible Thinking Gap</h1>
+  <p class="dek">Every lifecycle state is deliberate now. The next win is <em>perceived</em> speed — splitting the wait into three honest micro-states so users never stare at silence or a generic spinner.</p>
+
+  <h2>Where you actually are</h2>
+  <p>Your research assistant already streams labeled steps (<span class="chip">searching documents</span>, <span class="chip">searching the web</span>) and skeleton cards — better than most demos. But two gaps remain in the early wait:</p>
+
+  <div class="callout warn">
+    <span class="label">Gap 1 — submitted looks like working</span>
+    <p>When <code>status === 'submitted'</code> and no assistant message exists yet, you render <code>SearchingStatus</code> with "Working…". That promises backend progress you don't have. The user sent a question; the HTTP round-trip hasn't even opened.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="label">Gap 2 — silent thinking gap</span>
+    <p>Your turn loop only renders a live indicator when <code>research</code> exists. But the SDK creates an assistant message <em>before</em> the first <code>data-research</code> part arrives. In that window the user sees their question and… nothing. This is exactly the <strong>thinking gap</strong> from lesson 1.</p>
+  </div>
+
+  <h2>The principle</h2>
+  <p><strong>Perceived latency</strong> is how slow it <em>feels</em>. You can't always make the model faster, but you can always make the wait <em>legible</em>. Three rules:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Acknowledge instantly</strong></td><td>Echo the user's message and disable resend on Send — you already do this.</td></tr>
+      <tr><td><strong>Name the wait honestly</strong></td><td><em>Submitted</em> → lightweight ack. <em>Thinking</em> → distinct indicator. <em>Working</em> → named steps once you know them.</td></tr>
+      <tr><td><strong>Keep context in view</strong></td><td>Auto-scroll to the latest turn on send so the user sees their question and whatever indicator follows.</td></tr>
+    </tbody>
+  </table>
+  <p>One spinner for all three micro-states feels slower than three honest treatments — even when wall-clock time is identical.</p>
+
+  <div class="source">
+    <span class="label">Primary source (skim both)</span>
+    <a href="https://ai-sdk.dev/docs/troubleshooting/streaming-status-delay">AI SDK · Streaming status delay</a> — why <code>status</code> flips to <code>streaming</code> before content arrives. Pair with <a href="https://uxdesign.cc/the-trust-latency-gap-why-the-future-of-ux-is-intentionally-slower-3433c1787d5e">The Trust-Latency Gap</a> for the framing: speed without legibility erodes trust.
+  </div>
+
+  <h2>Build it (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create <code>lib/derive-in-flight-phase.ts</code>.</strong> One function that owns "what kind of wait is this?" — SDK status + optional research snapshot.</p>
+<pre><code><span class="tok-key">import type</span> { ChatStatus } <span class="tok-key">from</span> <span class="tok-str">"ai"</span>;
+<span class="tok-key">import type</span> { ResearchUIState } <span class="tok-key">from</span> <span class="tok-str">"@/lib/research-state"</span>;
+
+<span class="tok-key">export type</span> InFlightPhase = <span class="tok-str">"submitted"</span> | <span class="tok-str">"thinking"</span> | <span class="tok-str">"working"</span>;
+
+<span class="tok-key">export function</span> deriveInFlightPhase(
+  status: ChatStatus,
+  research?: ResearchUIState,
+): InFlightPhase {
+  <span class="tok-key">if</span> (status === <span class="tok-str">"submitted"</span>) <span class="tok-key">return</span> <span class="tok-str">"submitted"</span>;
+
+  <span class="tok-com">// Stream open — but no app progress yet</span>
+  <span class="tok-key">if</span> (!research) <span class="tok-key">return</span> <span class="tok-str">"thinking"</span>;
+  <span class="tok-key">if</span> (
+    research.phase === <span class="tok-str">"searching"</span> &amp;&amp;
+    !research.searched &amp;&amp;
+    !research.searchedDocs
+  ) {
+    <span class="tok-key">return</span> <span class="tok-str">"thinking"</span>;
+  }
+
+  <span class="tok-key">return</span> <span class="tok-str">"working"</span>;
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Add two small indicators</strong> in <code>ResearchChat/index.tsx</code> — keep them visually lighter than <code>SearchingStatus</code>:</p>
+<pre><code><span class="tok-key">function</span> SubmittedAck() {
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span> className=<span class="tok-str">"flex items-center gap-2 text-sm text-on-surface-variant"</span>&gt;
+      &lt;<span class="tok-key">Spinner</span> /&gt;
+      &lt;<span class="tok-key">span</span>&gt;Got it — starting research…&lt;/<span class="tok-key">span</span>&gt;
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+}
+
+<span class="tok-key">function</span> ThinkingGap() {
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span> className=<span class="tok-str">"flex items-center gap-2 text-sm text-on-surface-variant"</span>&gt;
+      &lt;<span class="tok-key">Spinner</span> /&gt;
+      &lt;<span class="tok-key">span</span>&gt;Thinking…&lt;/<span class="tok-key">span</span>&gt;
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+}</code></pre>
+      <p>No skeleton card here — you don't know the output shape yet. Save the skeleton for <code>working</code> when search is actually underway.</p>
+    </li>
+
+    <li>
+      <p><strong>Refactor the in-flight turn render</strong> — one branch for all busy turns, keyed on <code>deriveInFlightPhase</code>:</p>
+<pre><code><span class="tok-key">if</span> (inFlight) {
+  <span class="tok-key">const</span> waitPhase = deriveInFlightPhase(status, research);
+
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span> key={turn.user.id} className=<span class="tok-str">"flex flex-col gap-6"</span>&gt;
+      &lt;<span class="tok-key">UserMessage</span> text={question} /&gt;
+
+      {waitPhase === <span class="tok-str">"submitted"</span> &amp;&amp; &lt;<span class="tok-key">SubmittedAck</span> /&gt;}
+      {waitPhase === <span class="tok-str">"thinking"</span> &amp;&amp; &lt;<span class="tok-key">ThinkingGap</span> /&gt;}
+      {waitPhase === <span class="tok-str">"working"</span> &amp;&amp; research &amp;&amp; (
+        &lt;<span class="tok-key">SearchingStatus</span>
+          searched={research.searched}
+          searchedDocs={research.searchedDocs}
+        /&gt;
+      )}
+      {waitPhase === <span class="tok-str">"working"</span> &amp;&amp; research?.phase === <span class="tok-str">"streaming-answer"</span> &amp;&amp; (
+        research.briefPreview &amp;&amp; (
+          &lt;<span class="tok-key">BriefPreviewPanel</span> preview={research.briefPreview} defaultOpen /&gt;
+        )
+      )}
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+}</code></pre>
+      <p>This replaces the separate <code>inFlight &amp;&amp; research</code> / <code>inFlight &amp;&amp; !assistant</code> branches and closes the silent gap.</p>
+    </li>
+
+    <li>
+      <p><strong>Auto-scroll on send.</strong> A ref on the scroll container + <code>scrollIntoView</code> on the latest turn anchor:</p>
+<pre><code><span class="tok-key">const</span> bottomRef = useRef&lt;HTMLDivElement&gt;(null);
+
+<span class="tok-key">function</span> send(text: string) {
+  <span class="tok-com">// …existing send logic…</span>
+  requestAnimationFrame(() =&gt; {
+    bottomRef.current?.scrollIntoView({ behavior: <span class="tok-str">"smooth"</span>, block: <span class="tok-str">"end"</span> });
+  });
+}
+
+<span class="tok-com">// inside the messages column, after the turns map:</span>
+&lt;<span class="tok-key">div</span> ref={bottomRef} aria-hidden=<span class="tok-str">"true"</span> /&gt;</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Test the three micro-states.</strong> Throttle Network → Slow 3G, send a question, and watch the sequence:</p>
+      <ul>
+        <li><strong>Submitted:</strong> "Got it — starting research…" (brief, no skeleton)</li>
+        <li><strong>Thinking:</strong> "Thinking…" (stream open, no search flags yet)</li>
+        <li><strong>Working:</strong> "Searching documents…" / skeleton card (your existing labeled steps)</li>
+      </ul>
+      <p>Your question should stay in view the whole time.</p>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">What you shipped</span>
+    <p>Honest progress during the wait — the first lever of <a href="../reference/perceived-latency.html">perceived latency</a>. Next up: <strong>trust signals</strong> (citations, source surfacing, calibrated uncertainty) or <strong>human-in-the-loop</strong> flows, depending on what your retrofit needs most.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why is "Working…" during <code>submitted</code> misleading, even though something is technically happening?</summary>
+    <p>It implies named backend progress (search, retrieval) before you have any signal of that. Users interpret it as a stall when the label doesn't change. A lightweight ack matches what you actually know.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When does the silent thinking gap occur in your app, and what signal fixes it?</summary>
+    <p>After the SDK creates an assistant message but before the first <code>data-research</code> part arrives — your old branch required <code>research</code> to exist. <code>deriveInFlightPhase</code> returns <code>thinking</code> when <code>research</code> is undefined during <code>streaming</code>.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When you've made the edits, tell me and I'll review the three micro-states under throttled network. Want help adding an elapsed-time counter to <code>ThinkingGap</code> for extra legibility? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0003-friendly-transport-errors.html">← 0003: Friendly Transport Errors</a></span>
+    <span><a href="../reference/perceived-latency.html">Reference: perceived latency</a></span>
+    <span>Next: trust signals (0005)</span>
+  </div>
+</div>
+</body>
+</html>

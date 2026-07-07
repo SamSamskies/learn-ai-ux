@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Perceived Latency</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Perceived Latency</h1>
+  <p class="dek">How slow an interaction <em>feels</em> — governed by acknowledgement and legible progress, not raw milliseconds.</p>
+
+  <h2>The three levers</h2>
+  <table>
+    <thead>
+      <tr><th>Lever</th><th>What it does</th><th>When to use</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Acknowledge instantly</strong></td>
+        <td>Echo the user's input and disable resend the moment they hit Send — before the server answers.</td>
+        <td>Every send. Non-negotiable.</td>
+      </tr>
+      <tr>
+        <td><strong>Legible progress</strong></td>
+        <td>Replace generic spinners with <em>named steps</em> as soon as you know what's happening ("Searching documents…").</td>
+        <td>Any gap longer than ~300 ms. Especially the <a href="response-lifecycle.html">thinking gap</a>.</td>
+      </tr>
+      <tr>
+        <td><strong>Strategic friction</strong></td>
+        <td>Deliberately slow or gate an action (confirm, review) to build trust or prevent harm.</td>
+        <td>Destructive actions, high-stakes outputs — not the default wait state.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>In-flight micro-states</h2>
+  <p>During a single turn, the user experiences three distinct waits. Collapsing them into one spinner hides progress and feels slower than it is.</p>
+  <table>
+    <thead>
+      <tr><th>Micro-state</th><th>What's happening</th><th>UI treatment</th><th>Signal</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip">submitted</span></td>
+        <td>Request sent; HTTP not connected yet.</td>
+        <td>Lightweight ack — "Got it." No heavy skeleton.</td>
+        <td><code>status === 'submitted'</code></td>
+      </tr>
+      <tr>
+        <td><span class="chip">thinking</span></td>
+        <td>Stream open but no app progress yet — metadata, first byte, or empty assistant message.</td>
+        <td>Distinct thinking indicator — <em>not</em> the same as active search.</td>
+        <td><code>streaming</code> + no research snapshot / no step labels</td>
+      </tr>
+      <tr>
+        <td><span class="chip">working</span></td>
+        <td>Backend work is underway with known steps.</td>
+        <td>Named step labels + optional skeleton for the expected output shape.</td>
+        <td>Research <code>phase</code> + <code>searched</code> / <code>searchedDocs</code> flags</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Common mistakes</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>One spinner for everything</strong></td><td>"Working…" during <code>submitted</code> promises progress you don't have yet.</td></tr>
+      <tr><td><strong>Silent thinking gap</strong></td><td>Assistant message exists but no <code>data-research</code> part yet → user sees only their bubble. Worst case.</td></tr>
+      <tr><td><strong>Typing cursor before tokens</strong></td><td>Rendering streaming UI on <code>status</code> alone — connection ≠ content.</td></tr>
+      <tr><td><strong>No scroll on send</strong></td><td>User's question scrolls off-screen; the wait feels like nothing happened.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Related</h2>
+  <p><a href="response-lifecycle.html">Response lifecycle</a> · <a href="../lessons/0004-legible-thinking-gap.html">Lesson 0004</a> · <a href="../GLOSSARY.md">Glossary: perceived latency, thinking gap</a></p>
+
+  <div class="lesson-nav">
+    <span><a href="response-lifecycle.html">← Response lifecycle</a></span>
+    <span><a href="error-messaging.html">Error messaging →</a></span>
+  </div>
+</div>
+</body>
+</html>
