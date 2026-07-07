@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0001 · Designing the Response Lifecycle</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0001</p>
+  <h1>Designing the Response Lifecycle</h1>
+  <p class="dek">Your model already streams. This lesson turns that raw mechanic into a deliberate, five-state experience — the foundation the rest of your retrofit builds on.</p>
+
+  <h2>Why this, why first</h2>
+  <p>You've already shipped streaming in Phase 1 — a streaming UI state machine, a research assistant that streams, an AI SDK server. So we're <em>not</em> teaching streaming. We're teaching the design frame that separates a demo from a product: an AI reply is not a request-and-response, it's a <strong>lifecycle</strong> that passes through distinct states, and <em>each state is a UI decision you make on purpose</em>.</p>
+  <p>Most AI UIs are competent at two states (empty and full text) and accidental about the rest. Trust leaks out through the gaps: the silent spinner, the raw error, the reply you can't stop. Closing those gaps is the single highest-leverage thing your frontend background lets you do better than a backend engineer.</p>
+
+  <div class="callout">
+    <span class="label">The core idea</span>
+    <p>A nondeterministic reply moves through <span class="chip">idle</span> → <span class="chip">submitted</span> → <span class="chip">thinking</span> → <span class="chip">streaming</span> → <span class="chip">complete</span>, with <span class="chip">stopped</span> and <span class="chip">error</span> as exits. Ship a treatment for <em>every</em> box, not just the pretty two.</p>
+  </div>
+
+  <h2>The state most people miss</h2>
+  <p>Here's the non-obvious one. The Vercel AI SDK flips <code>status</code> to <code>'streaming'</code> the instant the connection opens — which includes metadata, before a single token of text arrives. If you render your "typing" UI on <code>status === 'streaming'</code>, users stare at an empty, misleading state during what we'll call the <strong>thinking gap</strong> — and that silence is exactly where confidence collapses.</p>
+  <p>The fix: distinguish <em>thinking</em> from <em>typing</em> by looking at whether the last assistant message actually has content yet.</p>
+
+  <div class="source">
+    <span class="label">Primary source — read this (5 min)</span>
+    <a href="https://ai-sdk.dev/docs/ai-sdk-ui/chatbot">AI SDK UI · Chatbot &amp; the <code>status</code> property</a>
+    — plus the short <a href="https://ai-sdk.dev/docs/troubleshooting/streaming-status-delay">"streaming status but no text"</a> note that explains the thinking gap.
+  </div>
+
+  <h2>Hands-on: give your research assistant all five states (~15 min)</h2>
+  <p>We'll retrofit the reply surface of your Phase 1 research assistant so every state is intentional. This is a self-contained component you can drop in and adapt.</p>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Derive the real state.</strong> Don't trust <code>status</code> alone — combine it with message content to split <em>thinking</em> from <em>streaming</em>.</p>
+<pre><code><span class="tok-com">// useLifecycle.ts — one place that owns "what state are we really in?"</span>
+<span class="tok-key">import</span> { useChat } <span class="tok-key">from</span> <span class="tok-str">'@ai-sdk/react'</span>;
+
+<span class="tok-key">export type</span> Phase =
+  <span class="tok-str">'idle'</span> | <span class="tok-str">'submitted'</span> | <span class="tok-str">'thinking'</span> | <span class="tok-str">'streaming'</span> | <span class="tok-str">'error'</span>;
+
+<span class="tok-key">export function</span> derivePhase(chat: ReturnType&lt;<span class="tok-key">typeof</span> useChat&gt;): Phase {
+  <span class="tok-key">const</span> { status, messages } = chat;
+  <span class="tok-key">if</span> (status === <span class="tok-str">'error'</span>) <span class="tok-key">return</span> <span class="tok-str">'error'</span>;
+  <span class="tok-key">if</span> (status === <span class="tok-str">'submitted'</span>) <span class="tok-key">return</span> <span class="tok-str">'submitted'</span>;
+  <span class="tok-key">if</span> (status === <span class="tok-str">'streaming'</span>) {
+    <span class="tok-key">const</span> last = messages.at(-1);
+    <span class="tok-key">const</span> hasText = last?.role === <span class="tok-str">'assistant'</span> &amp;&amp;
+      last.parts?.some((p) =&gt; p.type === <span class="tok-str">'text'</span> &amp;&amp; p.text.length &gt; 0);
+    <span class="tok-key">return</span> hasText ? <span class="tok-str">'streaming'</span> : <span class="tok-str">'thinking'</span>; <span class="tok-com">// ← the gap</span>
+  }
+  <span class="tok-key">return</span> <span class="tok-str">'idle'</span>;
+}</code></pre>
+    </li>
+    <li>
+      <p><strong>Render a treatment for each state.</strong> Notice the composer, indicator, and actions all change per state — that's the whole point.</p>
+<pre><code><span class="tok-key">const</span> chat = useChat();
+<span class="tok-key">const</span> phase = derivePhase(chat);
+<span class="tok-key">const</span> { messages, error, sendMessage, stop, regenerate } = chat;
+
+<span class="tok-key">return</span> (
+  &lt;<span class="tok-key">div</span>&gt;
+    {messages.map((m) =&gt; &lt;Message key={m.id} message={m} /&gt;)}
+
+    {phase === <span class="tok-str">'submitted'</span> &amp;&amp; &lt;Acknowledge /&gt;}      <span class="tok-com">{/* echoed instantly */}</span>
+    {phase === <span class="tok-str">'thinking'</span> &amp;&amp; &lt;ThinkingDots label=<span class="tok-str">"Thinking…"</span> /&gt;}
+    {phase === <span class="tok-str">'streaming'</span> &amp;&amp; &lt;StopButton onClick={stop} /&gt;}
+    {phase === <span class="tok-str">'error'</span> &amp;&amp; (
+      &lt;ErrorCard
+        message={friendly(error)}                 <span class="tok-com">{/* never a raw stack */}</span>
+        onRetry={() =&gt; regenerate()}                <span class="tok-com">{/* input preserved */}</span>
+      /&gt;
+    )}
+
+    &lt;Composer
+      disabled={phase === <span class="tok-str">'submitted'</span> || phase === <span class="tok-str">'thinking'</span>}
+      onSend={(text) =&gt; sendMessage({ text })}
+    /&gt;
+  &lt;/<span class="tok-key">div</span>&gt;
+);</code></pre>
+    </li>
+    <li>
+      <p><strong>Make the thinking gap honest.</strong> If your backend does real work before the first token (retrieval, tool calls), stream a <em>step label</em> instead of generic dots — "Searching sources…", "Reading 4 results…". Legible progress beats a spinner. (We go deep on this in a later lesson; for now, a labelled indicator is the win.)</p>
+    </li>
+    <li>
+      <p><strong>Design the stop.</strong> After <code>stop()</code>, keep the partial text on screen, tag it as stopped, and offer <em>Continue</em> / <em>Regenerate</em>. A reply the user can't interrupt feels like a runaway process, not a tool.</p>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>If <code>status</code> is stuck on <code>'ready'</code> and never changes, you likely mutated the <code>useChat</code> <code>id</code> right before sending. Keep the id stable across a send. (Known footgun — see the AI SDK issue tracker.)</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Your UI shows the typing cursor, but no text appears for three seconds. Which state are you actually in, and what went wrong?</summary>
+    <p>You're in the <strong>thinking</strong> state, not streaming. The SDK set <code>status</code> to <code>'streaming'</code> on connection open (metadata), before tokens arrived. You rendered typing UI on status alone instead of also checking that the last assistant message has non-empty text <code>parts</code>.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Name the two lifecycle exits that most demos forget, and the one rule that applies to both.</summary>
+    <p><strong>stopped</strong> and <strong>error</strong>. The shared rule: <em>preserve the user's work</em> — keep partial output on stop; keep the input and offer retry on error. Never lose what the user gave you.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Stuck wiring this into your actual research-assistant repo? Want me to look at your current chat component and mark up which states are missing? Just point me at the file. Before the next build step, tell me where that repo lives so exercises land in real code.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="../reference/response-lifecycle.html">Reference: The Response Lifecycle →</a></span>
+    <span>Next: Perceived latency &amp; the thinking gap (0002)</span>
+  </div>
+</div>
+</body>
+</html>

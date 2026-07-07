@@ -1,0 +1,23 @@
+# Mission: AI Product UX & Interaction Design (Roadmap Phase 2)
+
+## Why
+I'm a 10+ year frontend engineer becoming an AI Product Engineer. My edge over backend/ML engineers is building interfaces — and the hardest part of an AI product is the UX over nondeterministic, streaming, sometimes-wrong output. I want to turn that background into a genuine differentiator by learning to make AI feel fast, trustworthy, and usable.
+
+## Success looks like
+- I have **retrofitted polished AI UX onto my Phase 1 research assistant** (Vercel AI SDK + Next.js/React) so it feels like a real product, not a demo.
+- I can design and implement the full **response lifecycle**: idle, submitted, thinking, streaming, complete, stopped, and error — each with a deliberate UI treatment.
+- I can build **human-in-the-loop** flows (tool/action approval, edit-before-send, confirm destructive actions).
+- I can surface **trust signals**: citations, sources, and calibrated uncertainty rather than false confidence.
+- I can reason about **perceived latency** (acknowledge instantly, make progress legible, know when to add strategic friction) and apply optimistic updates.
+- I have at least one before/after I can point to and explain the UX decisions behind.
+
+## Constraints
+- **Time:** ~20 min per lesson — one tangible win per session.
+- **Format:** short concept explainer, then a hands-on build/exercise in a real repo. Build-heavy.
+- **Stack:** Vercel AI SDK + Next.js/React (matches Phase 1 AI SDK work).
+- Solo, self-directed, evenings/weekends cadence.
+
+## Out of scope (for now)
+- Backend/model internals, RAG, agents, evals as primary topics (later roadmap phases). Touch only where they change the UX.
+- Native mobile UI. Web first.
+- Visual/brand design systems from scratch — reuse existing UI, focus on interaction over nondeterministic output.

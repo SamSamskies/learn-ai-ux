@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · The Response Lifecycle</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>The Response Lifecycle</h1>
+  <p class="dek">The states every nondeterministic reply moves through, and the deliberate UI treatment each one earns.</p>
+
+  <h2>The states</h2>
+  <table>
+    <thead>
+      <tr><th>State</th><th>What's happening</th><th>UI treatment</th><th>AI SDK signal</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip">idle</span></td>
+        <td>No request in flight. Awaiting input.</td>
+        <td>Composer enabled. Empty state or prior conversation. Suggest a gentle first step.</td>
+        <td><code>status === 'ready'</code> &amp; no messages</td>
+      </tr>
+      <tr>
+        <td><span class="chip">submitted</span></td>
+        <td>Request sent; no stream yet.</td>
+        <td>Acknowledge <em>instantly</em>: echo the user message, disable resend, show a "thinking" affordance.</td>
+        <td><code>status === 'submitted'</code></td>
+      </tr>
+      <tr>
+        <td><span class="chip">thinking</span></td>
+        <td>Stream open (metadata/latency) but <strong>no tokens yet</strong>.</td>
+        <td>Distinct "thinking" indicator — not the same as typing. This is the gap where trust leaks.</td>
+        <td><code>streaming</code> + last assistant msg has empty <code>parts</code></td>
+      </tr>
+      <tr>
+        <td><span class="chip">streaming</span></td>
+        <td>Tokens arriving.</td>
+        <td>Render progressively. Show a Stop button. Keep the composer aware a reply is in progress.</td>
+        <td><code>streaming</code> + non-empty <code>parts</code></td>
+      </tr>
+      <tr>
+        <td><span class="chip">complete</span></td>
+        <td>Full reply received.</td>
+        <td>Re-enable composer. Offer follow-up affordances (copy, retry, feedback, sources).</td>
+        <td><code>status === 'ready'</code> after a reply</td>
+      </tr>
+      <tr>
+        <td><span class="chip">stopped</span></td>
+        <td>User aborted mid-stream.</td>
+        <td>Keep partial output, mark it as stopped, offer "continue" / "regenerate".</td>
+        <td><code>stop()</code> → returns to <code>ready</code> (abort ignored)</td>
+      </tr>
+      <tr>
+        <td><span class="chip">error</span></td>
+        <td>Request failed (network, provider, rate limit).</td>
+        <td>Plain-language message, a retry, and preserve the user's input. Never a raw stack trace.</td>
+        <td><code>status === 'error'</code>, <code>error</code> object set</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <span class="label">The one that bites</span>
+    <p>The AI SDK flips <code>status</code> to <code>streaming</code> the moment the connection opens — including metadata — <em>before any text</em>. If you treat <code>streaming</code> as "typing," users see a silent, misleading state during the <strong>thinking gap</strong>. Detect it by checking the last assistant message's <code>parts</code> are still empty.</p>
+  </div>
+
+  <h2>Design principles</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Acknowledge instantly</strong></td><td>Perceived latency is set in the first 100ms. Echo input and show a state before the model does anything.</td></tr>
+      <tr><td><strong>Make progress legible</strong></td><td>Stream <em>steps</em>, not just tokens where you can — "Searching sources → Reading → Writing" beats an opaque spinner.</td></tr>
+      <tr><td><strong>Every exit is designed</strong></td><td>stopped and error are first-class states, not afterthoughts. Preserve user work in both.</td></tr>
+      <tr><td><strong>Strategic friction</strong></td><td>Where a wrong action is costly, a deliberate confirm step builds more trust than raw speed.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://ai-sdk.dev/docs/ai-sdk-ui/chatbot">AI SDK · useChat status</a> ·
+    <a href="https://ai-sdk.dev/docs/troubleshooting/streaming-status-delay">AI SDK · the thinking-gap troubleshooting note</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0001-response-lifecycle.html">→ Lesson 0001: Designing the Response Lifecycle</a></span>
+  </div>
+</div>
+</body>
+</html>

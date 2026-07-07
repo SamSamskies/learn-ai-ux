@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0002 · Designing the Interrupted State</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0002</p>
+  <h1>Designing the Interrupted State</h1>
+  <p class="dek">Your research assistant lets users hit Stop — then throws away what they were watching. This lesson closes the last real hole in your response lifecycle, in your actual repo.</p>
+
+  <h2>Where you actually are</h2>
+  <p>I read <code>ResearchChat.tsx</code>. You handle <span class="chip">idle</span>, <span class="chip">submitted</span>, <span class="chip">thinking</span>, <span class="chip">streaming</span>, <span class="chip">complete</span>, and <span class="chip">error</span> well — the thinking/streaming states even stream <em>labeled steps</em> ("Searching the web…") and progressive structured output, which is the advanced move. So we skip all of that. One state is undesigned: <span class="chip">stopped</span>.</p>
+
+  <div class="callout warn">
+    <span class="label">The bug, precisely</span>
+    <p>Your rich per-turn UI only renders while <code>inFlight = isLast &amp;&amp; busy</code>. When the user hits Stop, <code>busy</code> flips to <code>false</code>, so <code>inFlight</code> is <code>false</code> — but the turn's <code>phase</code> is still <code>searching</code> or <code>streaming-answer</code>, not <code>done</code>/<code>error</code>. Your default branch only renders <code>done</code> and <code>error</code>, so the turn <strong>collapses to just the question bubble.</strong> The partial brief the user was watching stream simply vanishes.</p>
+  </div>
+
+  <h2>The principle</h2>
+  <p>An interruption is a <em>user action</em>, not a failure. Three rules make it feel like control instead of a crash:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Preserve</strong></td><td>Keep whatever partial output already streamed. Never blank the screen on stop.</td></tr>
+      <tr><td><strong>Mark</strong></td><td>Say plainly that <em>the user</em> stopped it — a "Stopped" badge, not an error.</td></tr>
+      <tr><td><strong>Recover</strong></td><td>Offer one clear next action. <code>regenerate()</code> retries the turn <em>in place</em> — no duplicate question.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary source (skim the Stop &amp; Regenerate sections)</span>
+    <a href="https://ai-sdk.dev/docs/ai-sdk-ui/chatbot">AI SDK UI · Chatbot — Cancellation (<code>stop</code>) &amp; <code>regenerate</code></a>. Note: <code>regenerate({ messageId })</code> re-runs a specific assistant message and drops messages after it — perfect for retry-in-place.
+  </div>
+
+  <h2>Build it (~15 min, in <code>components/ResearchChat.tsx</code>)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Pull <code>regenerate</code> out of <code>useChat</code>.</strong> You already destructure everything else.</p>
+<pre><code><span class="tok-key">const</span> { messages, sendMessage, status, stop, error, regenerate } =
+  useChat&lt;ResearchUIMessage&gt;({ id: sessionId, transport });</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Add a <code>StoppedNotice</code> component</strong> next to <code>LiveTurn</code>. It reuses your existing <code>BriefPreviewPanel</code> and <code>RetryIcon</code> — preserve, mark, recover in one small piece.</p>
+<pre><code><span class="tok-key">function</span> StoppedNotice({
+  state,
+  onRegenerate,
+}: {
+  state?: ResearchUIState;
+  onRegenerate: () =&gt; <span class="tok-key">void</span>;
+}) {
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span> className=<span class="tok-str">"space-y-3"</span>&gt;
+      &lt;<span class="tok-key">div</span> className=<span class="tok-str">"flex items-center gap-2"</span>&gt;
+        &lt;<span class="tok-key">span</span> className=<span class="tok-str">"inline-flex items-center rounded-lg border border-outline-variant bg-surface-container-low px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant"</span>&gt;
+          Stopped
+        &lt;/<span class="tok-key">span</span>&gt;
+        &lt;<span class="tok-key">span</span> className=<span class="tok-str">"text-sm text-on-surface-variant"</span>&gt;
+          You stopped this response.
+        &lt;/<span class="tok-key">span</span>&gt;
+      &lt;/<span class="tok-key">div</span>&gt;
+
+      {<span class="tok-com">/* Preserve: keep whatever partial output streamed */</span>}
+      {state?.briefPreview &amp;&amp; &lt;BriefPreviewPanel preview={state.briefPreview} /&gt;}
+
+      {<span class="tok-com">/* Recover: retry the SAME turn in place */</span>}
+      &lt;<span class="tok-key">button</span>
+        type=<span class="tok-str">"button"</span>
+        onClick={onRegenerate}
+        className=<span class="tok-str">"inline-flex items-center gap-2 rounded-lg border border-outline-variant px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-container-low"</span>
+      &gt;
+        &lt;RetryIcon /&gt;
+        Regenerate
+      &lt;/<span class="tok-key">button</span>&gt;
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Detect the interrupted turn</strong> inside your <code>turns.map(...)</code>, where you already compute <code>research</code> and <code>assistant</code>. An interrupted turn is one that has an assistant message but never reached a terminal phase:</p>
+<pre><code><span class="tok-key">const</span> interrupted =
+  !!assistant &amp;&amp;
+  research?.phase !== <span class="tok-str">"done"</span> &amp;&amp;
+  research?.phase !== <span class="tok-str">"error"</span>;</code></pre>
+      <p>Because the in-flight turn is already returned earlier via <code>LiveTurn</code>, anything reaching this point is genuinely stopped — even an <em>older</em> turn you stopped before asking something new.</p>
+    </li>
+
+    <li>
+      <p><strong>Render it in the default branch</strong>, alongside your existing <code>done</code> and <code>error</code> blocks:</p>
+<pre><code>{interrupted &amp;&amp; (
+  &lt;StoppedNotice
+    state={research}
+    onRegenerate={() =&gt; regenerate({ messageId: assistant!.id })}
+  /&gt;
+)}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Test the loop.</strong> Ask something, hit Stop mid-search and mid-stream. You should see the question, the partial brief preview (if any), a "Stopped" badge, and Regenerate — which replaces the turn in place with a fresh answer. No duplicate question.</p>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">Bonus fix (2 min) — kills gap #2</span>
+    <p>Your error retry currently calls <code>retryQuestion(question)</code>, which <code>send()</code>s a <em>new</em> user turn (duplicate question, stale banner left behind). Swap the domain-error <code>ErrorBanner</code>'s <code>onRetry</code> to <code>() =&gt; regenerate({ messageId: assistant.id })</code> for the same in-place behavior you just built.</p>
+  </div>
+
+  <div class="callout">
+    <span class="label">What we're NOT doing (and why)</span>
+    <p>True <em>Continue</em> — resuming generation from the exact partial — needs server support (resumable streams / a "continue from here" endpoint). Your brief is a single structured generation, so <strong>Regenerate is the honest recovery action</strong> here. If you later want real resume, that's the AI SDK's <a href="https://ai-sdk.dev/docs/ai-sdk-ui/chatbot">resumable-streams</a> territory — a future lesson.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>After Stop, why does the partial brief disappear in the current code — name the exact condition.</summary>
+    <p><code>inFlight = isLast &amp;&amp; busy</code> becomes <code>false</code> on stop, but <code>phase</code> is still <code>searching</code>/<code>streaming-answer</code>. The default render branch only matches <code>phase === "done"</code> or <code>"error"</code>, so nothing but the user bubble renders.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why use regenerate with a messageId instead of re-sending the question text?</summary>
+    <p>Re-sending appends a new user turn (duplicate question + stale turn left behind). <code>regenerate({ messageId })</code> drops messages after that assistant message and retries <em>that</em> turn in place — one question, one answer.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When you've made the edits, tell me and I'll review the diff against these three rules (preserve / mark / recover) and check the edge case where you stop during the very first thinking gap (no assistant message yet). Stuck on any step? Point me at the line.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0001-response-lifecycle.html">← 0001: The Response Lifecycle</a></span>
+    <span><a href="../reference/response-lifecycle.html">Reference: lifecycle states</a></span>
+    <span>Next: perceived latency &amp; optimistic updates (0003)</span>
+  </div>
+</div>
+</body>
+</html>

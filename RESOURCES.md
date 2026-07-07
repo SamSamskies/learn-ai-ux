@@ -1,0 +1,40 @@
+# AI Product UX & Interaction Design — Resources
+
+## Knowledge
+
+### Foundational patterns & principles
+- [Shape of AI — shapeof.ai](https://www.shapeof.ai/)
+  Open pattern library (Emily Campbell) organizing AI UX into six categories: Wayfinders, Prompt Actions, Tuners, Governors, Trust Builders, Identifiers. Use for: a shared vocabulary of patterns and as a diagnostic checklist when a feature has low adoption. ([overview](https://amirelion.com/blog/shape-of-ai-pattern-library-ai-ux-design))
+- [arablex/llm-ux-patterns (GitHub)](https://github.com/arablex/llm-ux-patterns)
+  Production-tested patterns shown on real screens, not mockups: streaming *steps* (not just tokens), RAG citations, token/cost transparency, quota/rate-limit fallback, eval ledgers, AI empty states. Use for: concrete "what does good look like" references when building.
+- [NN/g — Designing AI Products and Features: Study Guide](https://www.nngroup.com/articles/designing-ai-study-guide/)
+  Curated hub of Nielsen Norman research on AI UX. Use for: authoritative, research-grounded guidance and as a jumping-off point.
+
+### Specific topics
+- [NN/g — AI: First New UI Paradigm in 60 Years](https://www.nngroup.com/articles/ai-paradigm/)
+  Frames generative AI as "intent-based outcome specification" — users say *what* they want, not *how*. Use for: the mental model behind why AI UX is different, and why hybrid (chat + GUI) interfaces win.
+- [NN/g — Generative UI and Outcome-Oriented Design](https://www.nngroup.com/articles/generative-ui/)
+  Distinguishes true genUI (real-time AI-generated interfaces) from AI-assisted design; argues designers become authors of *constraints/guardrails*. Use for: the generative/dynamic UI lessons.
+- [NN/g — GenUI In Real Life: Buttons and Checkboxes](https://www.nngroup.com/articles/genui-buttons-and-checkboxes/)
+  Real examples (Claude's AskUserQuestion, Google AI Mode checkboxes) of simple GUI widgets injected into chat to reduce friction. Use for: human-in-the-loop and hybrid-input lessons.
+- [The Trust-Latency Gap — UX Collective](https://uxdesign.cc/the-trust-latency-gap-why-the-future-of-ux-is-intentionally-slower-3433c1787d5e)
+  Argues that as AI execution nears zero latency, trust needs *strategic friction* — deliberate speed bumps that build confidence. Use for: perceived-latency and confirmation-flow lessons.
+
+### Implementation (stack)
+- [Vercel AI SDK — Chatbot (useChat)](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot)
+  Canonical docs for `useChat`: message streaming, managed `status` (`submitted | streaming | ready | error`), `error`, `stop`, throttling UI updates. Use for: every hands-on build in this phase.
+- [Vercel AI SDK — Troubleshooting: Streaming Status Shows But No Text Appears](https://ai-sdk.dev/docs/troubleshooting/streaming-status-delay)
+  Explains the "streaming but empty" gap: status flips to `streaming` on connection (incl. metadata) before tokens arrive. Use for: correctly distinguishing "thinking" from "typing" in the UI.
+- [vercel/ai — chat.ts source (ChatStatus)](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat.ts)
+  The source of truth for the status state machine and abort handling. Use for: when docs are ambiguous about edge cases (abort, network errors).
+
+## Wisdom (Communities)
+- [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)
+  Use for: critique of interaction patterns and before/after retrofits.
+- [Vercel AI SDK GitHub Discussions/Issues](https://github.com/vercel/ai/discussions)
+  Use for: implementation edge cases (streaming, status, aborts) with maintainer responses.
+- **TODO:** find a higher-signal, AI-UX-specific community (Discord/Slack). Current UX subreddits are broad.
+
+## Gaps
+- No single authoritative text on *implementing* AI UX patterns end-to-end — knowledge is scattered across the pattern libraries + framework docs. Lessons will stitch these together.
+- Need a trusted source specifically on **optimistic updates / perceived-performance** for AI (beyond the trust-latency essay).
