@@ -57,8 +57,8 @@
       <tr>
         <td><span class="chip">error</span></td>
         <td>Request failed (network, provider, rate limit).</td>
-        <td>Plain-language message, a retry, and preserve the user's input. Never a raw stack trace.</td>
-        <td><code>status === 'error'</code>, <code>error</code> object set</td>
+        <td>Plain-language message, a retry, and preserve the user's input. Never a raw stack trace. Two channels: domain (<code>phase: 'error'</code> in stream) and transport (top-level <code>error</code> — map client-side).</td>
+        <td><code>status === 'error'</code>, <code>error</code> object set, or domain <code>phase === 'error'</code></td>
       </tr>
     </tbody>
   </table>
@@ -85,7 +85,8 @@
   </div>
 
   <div class="lesson-nav">
-    <span><a href="../lessons/0001-response-lifecycle.html">→ Lesson 0001: Designing the Response Lifecycle</a></span>
+    <span><a href="../lessons/0001-response-lifecycle.html">Lesson 0001</a></span>
+    <span><a href="error-messaging.html">Error Messaging →</a></span>
   </div>
 </div>
 </body>

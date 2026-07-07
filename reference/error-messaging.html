@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Error Messaging</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Error Messaging</h1>
+  <p class="dek">Two error channels, one set of user-facing rules — plain language, preserved context, retry in place.</p>
+
+  <h2>Two channels</h2>
+  <table>
+    <thead>
+      <tr><th>Channel</th><th>Origin</th><th>Signal in AI SDK</th><th>Who writes the copy</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Domain</strong></td>
+        <td>Server completed the stream but reported failure in app state (e.g. <code>phase: 'error'</code> in <code>data-research</code>)</td>
+        <td>Inside message <code>parts</code></td>
+        <td>Your API / stream handler — set <code>research.error</code> server-side</td>
+      </tr>
+      <tr>
+        <td><strong>Transport</strong></td>
+        <td>HTTP, network, auth, or SDK parse failure before/during delivery</td>
+        <td>Top-level <code>error</code> from <code>useChat</code></td>
+        <td>Client mapper (<code>friendlyTransportError</code>) — never show <code>error.message</code> raw</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Three rules (both channels)</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Plain language</strong></td><td>Specific enough to act on; blame-free; no status codes or stack traces in the UI.</td></tr>
+      <tr><td><strong>Preserve context</strong></td><td>Keep the user's question and any partial output on screen.</td></tr>
+      <tr><td><strong>Retry in place</strong></td><td><code>regenerate({ messageId })</code> when an assistant message exists. Re-send question text only when failure happened before any assistant message was created.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Common transport mappings</h2>
+  <table>
+    <thead>
+      <tr><th>Raw signal</th><th>User sees</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Failed to fetch</code>, network errors</td><td>Connection problem — check your network and try again.</td></tr>
+      <tr><td>401 / 403 / unauthorized</td><td>You're not signed in. Refresh the page and try again.</td></tr>
+      <tr><td>429 / rate limit</td><td>Too many requests — wait a moment and try again.</td></tr>
+      <tr><td>500 / 502 / 503</td><td>Our servers hit a snag. Try again in a few seconds.</td></tr>
+      <tr><td><code>AbortError</code></td><td>The request was cancelled. (Usually hidden — user already stopped.)</td></tr>
+      <tr><td>Anything else</td><td>Something went wrong. Please try again.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="label">Dev vs prod</span>
+    <p>Log <code>error.message</code> (and stack) to the console or your observability tool in development. The UI always gets the mapped string.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://ai-sdk.dev/docs/ai-sdk-ui/chatbot#error-handling">AI SDK · Error Handling</a> ·
+    <a href="https://www.nngroup.com/articles/error-message-guidelines/">NN/g · Error-Message Guidelines</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0003-friendly-transport-errors.html">→ Lesson 0003: Friendly Transport Errors</a></span>
+    <span><a href="response-lifecycle.html">Response Lifecycle</a></span>
+  </div>
+</div>
+</body>
+</html>

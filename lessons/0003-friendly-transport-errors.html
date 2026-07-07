@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0003 · Friendly Transport Errors</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0003</p>
+  <h1>Friendly Transport Errors</h1>
+  <p class="dek">You designed domain errors and the interrupted state. One lifecycle exit still leaks raw SDK text — the transport failure path. This lesson closes it.</p>
+
+  <h2>Where you actually are</h2>
+  <p>After lesson 2, every terminal state in your turn loop is deliberate: <span class="chip">done</span>, domain <span class="chip">error</span>, and <span class="chip">stopped</span>. Domain errors already show a friendly fallback string and retry with <code>regenerate({ messageId })</code>.</p>
+  <p>But the <em>bottom</em> banner — the one driven by <code>useChat</code>'s top-level <code>error</code> — still does two wrong things:</p>
+
+  <div class="callout warn">
+    <span class="label">The gap, precisely</span>
+    <p><strong>Raw message:</strong> <code>message={error.message}</code> can surface <code>Failed to fetch</code>, HTTP status codes, or JSON parse errors — technical text that reads like a bug, not a product.</p>
+    <p><strong>Wrong retry:</strong> <code>retryQuestion(getUserText(last.user))</code> calls <code>send()</code>, appending a <em>duplicate</em> user turn — the exact anti-pattern you fixed everywhere else.</p>
+  </div>
+
+  <h2>The principle</h2>
+  <p>Your app has <strong>two error channels</strong>. Treat them differently in the UI, but the <em>user-facing rules</em> are the same:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Domain errors</strong></td><td>Your server streams <code>phase: 'error'</code> inside <code>data-research</code>. You control the copy via <code>research.error</code>.</td></tr>
+      <tr><td><strong>Transport errors</strong></td><td>The fetch/stream itself failed — network, auth, 5xx, SDK parse. <code>useChat</code> sets top-level <code>error</code>. You must <em>translate</em> SDK text into product copy.</td></tr>
+    </tbody>
+  </table>
+  <p>Three rules for any error surface:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Plain language</strong></td><td>Say what happened and what to do — never expose stack traces, status codes, or fetch internals.</td></tr>
+      <tr><td><strong>Preserve context</strong></td><td>Keep the user's question visible. Don't wipe the thread on failure.</td></tr>
+      <tr><td><strong>Retry in place</strong></td><td><code>regenerate({ messageId })</code> when an assistant message exists; only re-send when the request failed before one was created.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary source (skim the Error Handling section)</span>
+    <a href="https://ai-sdk.dev/docs/ai-sdk-ui/chatbot#error-handling">AI SDK UI · Chatbot — Error Handling</a> — documents the top-level <code>error</code> object and <code>regenerate</code> for retry. Pair with <a href="https://www.nngroup.com/articles/error-message-guidelines/">NN/g · Error-Message Guidelines</a> for the copy rules (specific, blame-free, actionable).
+  </div>
+
+  <h2>Build it (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create <code>lib/friendly-transport-error.ts</code>.</strong> One function, one fallback. Match on <code>error.name</code>, <code>error.message</code> substrings, and optional HTTP status if your transport attaches it.</p>
+<pre><code><span class="tok-key">const</span> DEFAULT =
+  <span class="tok-str">"Something went wrong. Please try again."</span>;
+
+<span class="tok-key">export function</span> friendlyTransportError(error: Error): string {
+  <span class="tok-key">const</span> msg = error.message.toLowerCase();
+
+  <span class="tok-key">if</span> (error.name === <span class="tok-str">"AbortError"</span>) {
+    <span class="tok-key">return</span> <span class="tok-str">"The request was cancelled."</span>;
+  }
+  <span class="tok-key">if</span> (
+    msg.includes(<span class="tok-str">"failed to fetch"</span>) ||
+    msg.includes(<span class="tok-str">"network"</span>) ||
+    msg.includes(<span class="tok-str">"load failed"</span>)
+  ) {
+    <span class="tok-key">return</span> <span class="tok-str">"Connection problem — check your network and try again."</span>;
+  }
+  <span class="tok-key">if</span> (msg.includes(<span class="tok-str">"401"</span>) || msg.includes(<span class="tok-str">"403"</span>) || msg.includes(<span class="tok-str">"unauthorized"</span>)) {
+    <span class="tok-key">return</span> <span class="tok-str">"You're not signed in. Refresh the page and try again."</span>;
+  }
+  <span class="tok-key">if</span> (msg.includes(<span class="tok-str">"429"</span>) || msg.includes(<span class="tok-str">"rate limit"</span>)) {
+    <span class="tok-key">return</span> <span class="tok-str">"Too many requests — wait a moment and try again."</span>;
+  }
+  <span class="tok-key">if</span> (msg.includes(<span class="tok-str">"500"</span>) || msg.includes(<span class="tok-str">"502"</span>) || msg.includes(<span class="tok-str">"503"</span>)) {
+    <span class="tok-key">return</span> <span class="tok-str">"Our servers hit a snag. Try again in a few seconds."</span>;
+  }
+
+  <span class="tok-key">return</span> DEFAULT;
+}</code></pre>
+      <p>Log the raw error to the console in dev if you want — just never show it to users.</p>
+    </li>
+
+    <li>
+      <p><strong>Wire it into the transport banner</strong> in <code>ResearchChat/index.tsx</code>:</p>
+<pre><code><span class="tok-key">import</span> { friendlyTransportError } <span class="tok-key">from</span> <span class="tok-str">"@/lib/friendly-transport-error"</span>;
+
+{error &amp;&amp; (
+  &lt;<span class="tok-key">div</span> className=<span class="tok-str">"mt-6"</span>&gt;
+    &lt;ErrorBanner
+      message={friendlyTransportError(error)}
+      onRetry={retryTransportError}
+    /&gt;
+  &lt;/<span class="tok-key">div</span>&gt;
+)}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Extract <code>retryTransportError</code></strong> — regenerate in place when you can, re-send only as a last resort:</p>
+<pre><code><span class="tok-key">function</span> retryTransportError() {
+  <span class="tok-key">const</span> last = turns.at(-1);
+  <span class="tok-key">if</span> (!last) <span class="tok-key">return</span>;
+
+  <span class="tok-key">if</span> (last.assistant) {
+    regenerate({ messageId: last.assistant.id });
+    <span class="tok-key">return</span>;
+  }
+
+  <span class="tok-com">// Failed before an assistant message existed — safe to re-send once</span>
+  send(getUserText(last.user));
+}</code></pre>
+      <p>This mirrors the pattern you already use for domain errors and stopped turns.</p>
+    </li>
+
+    <li>
+      <p><strong>Test both channels.</strong></p>
+      <ul>
+        <li><strong>Domain error:</strong> trigger a search failure your server handles (you already have friendly copy + regenerate).</li>
+        <li><strong>Transport error:</strong> in DevTools → Network, set throttling to Offline, send a question, hit Try again with network restored. You should see plain language, your question once, and no duplicate bubble on retry.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">Lifecycle complete</span>
+    <p>After this, every box in the <a href="../reference/response-lifecycle.html">response lifecycle reference</a> has a deliberate treatment in your repo. Phase 2's next arc is <strong>perceived latency</strong> — making the thinking gap feel even faster than it already does with your labeled steps.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why are there two error paths in your chat, and why can't you delete one?</summary>
+    <p>Domain errors are part of your streamed research state — the server completed the HTTP response but reported failure inside the brief pipeline. Transport errors mean the HTTP/stream layer itself failed before or during delivery. Different origins, same user-facing rules.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When is re-sending the question text the correct retry, and when is it wrong?</summary>
+    <p>Wrong when an assistant message already exists — that duplicates the user turn. Correct only when the request failed before any assistant message was created, so <code>regenerate({ messageId })</code> has nothing to target.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When you've made the edits, tell me and I'll review the mapper against a few raw error strings and confirm the transport retry doesn't duplicate turns. Want help simulating a 429 or 500 from your API route instead of going offline? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0002-interrupted-state.html">← 0002: Interrupted State</a></span>
+    <span><a href="../reference/error-messaging.html">Reference: error messaging</a></span>
+    <span>Next: perceived latency (0004)</span>
+  </div>
+</div>
+</body>
+</html>

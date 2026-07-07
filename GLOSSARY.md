@@ -27,3 +27,11 @@ _Avoid_: cancelled, aborted, failed
 **Regenerate in place**:
 Retrying a specific turn via `regenerate({ messageId })` so the SDK drops messages after it and replaces that answer — as opposed to re-sending the question text, which appends a duplicate turn.
 _Avoid_: retry, resend
+
+**Transport error**:
+A failure in the HTTP/stream layer (network, auth, 5xx, SDK parse) before or during delivery — distinct from a domain error streamed inside app state. Surfaces via `useChat`'s top-level `error`; must be mapped to plain-language copy client-side.
+_Avoid_: fetch error, API error
+
+**Friendly error mapping**:
+Translating raw SDK or HTTP error text into specific, blame-free, actionable product copy — never showing `error.message` directly to users.
+_Avoid_: error handling, error messages
