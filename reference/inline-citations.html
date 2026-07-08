@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Inline Citations</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Inline Citations</h1>
+  <p class="dek">Claim-level links from synthesis back to sources — so users can verify <em>this sentence</em>, not hunt through a footer.</p>
+
+  <h2>Two layers of trust</h2>
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>Answers</th><th>Example in your app</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Scan height</strong></td>
+        <td>How grounded is this answer overall?</td>
+        <td><code>TrustBar</code> — confidence, provenance, source count</td>
+      </tr>
+      <tr>
+        <td><strong>Claim level</strong></td>
+        <td>Which source backs <em>this</em> fact?</td>
+        <td>Superscript <code>[1]</code> on key points → numbered source</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Footer-only citations train users to trust unconditionally. Inline markers invite spot-checking at the moment of doubt.</p>
+
+  <h2>Numbered markers pattern</h2>
+  <p>Perplexity popularized this: superscript indices inline, full metadata in a numbered list below. Tradeoffs:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Pros</strong></td><td>Scannable, compact, bidirectional (marker ↔ source), works with multiple sources per claim</td></tr>
+      <tr><td><strong>Cons</strong></td><td>Requires model discipline on numbering; broken indices must degrade gracefully</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Implementation checklist</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Number sources</strong></td><td><code>id="source-1"</code>, <code>source-2</code>… on each item in the list; <code>scroll-mt-*</code> for anchor jumps</td></tr>
+      <tr><td><strong>Render markers</strong></td><td>Transform <code>[1]</code> in text → superscript link to <code>#source-1</code></td></tr>
+      <tr><td><strong>Prompt + schema</strong></td><td>Tell the model to append <code>[n]</code> on cited key points; indices match numbered list order</td></tr>
+      <tr><td><strong>Graceful fallback</strong></td><td>Out-of-range <code>[99]</code> → render as plain text, not a dead link</td></tr>
+      <tr><td><strong>Keep footer</strong></td><td>Inline markers complement the full list — don't remove <code>#brief-sources</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Common mistakes</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Markers without a numbered list</strong></td><td><code>[1]</code> with nowhere to jump is decoration.</td></tr>
+      <tr><td><strong>Full URLs inline</strong></td><td>Breaks reading flow; save URLs for the source list.</td></tr>
+      <tr><td><strong>Silent broken refs</strong></td><td>Dead links erode trust faster than no citation.</td></tr>
+      <tr><td><strong>Citations only on summary</strong></td><td>Key points are where users spot-check facts — cite there first.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://www.shapeof.ai/patterns/citations">Shape of AI · Citations</a> (inline cues for sentence-level claims) ·
+    <a href="https://www.shapeof.ai/patterns/synthesis">Shape of AI · Synthesis</a> (multiple sources per claim)
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="trust-signals.html">← Trust signals</a></span>
+    <span><a href="../lessons/0007-inline-citation-markers.html">Lesson 0007</a></span>
+  </div>
+</div>
+</body>
+</html>

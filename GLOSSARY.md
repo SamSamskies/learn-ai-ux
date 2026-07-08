@@ -51,3 +51,7 @@ _Avoid_: HITL, approval flow
 **Destructive action**:
 An operation that removes data, overwrites work, or triggers irreversible side effects. Requires confirmation by default when harm × scope × reversibility is high.
 _Avoid_: dangerous action, delete flow
+
+**Inline citation**:
+A compact marker (typically a superscript number) embedded in synthesis text that links a specific claim to a numbered source — enabling claim-level verification without breaking reading flow.
+_Avoid_: footnote, reference link

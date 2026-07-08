@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0007 · Inline Citation Markers</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0007</p>
+  <h1>Inline Citation Markers</h1>
+  <p class="dek">Human-in-the-loop gates irreversible actions now. The next trust win is <strong>claim-level verification</strong> — linking each key point to the source that backs it, not just listing sources at the bottom.</p>
+
+  <h2>Where you actually are</h2>
+  <p>Your <code>TrustBar</code> tells users <em>how grounded</em> the brief is at scan height. The footer lists source pills. But the synthesis itself is uncited:</p>
+
+  <div class="callout warn">
+    <span class="label">Gap — claims disconnected from sources</span>
+    <p><code>key_points</code> render as plain facts. A user reading "Revenue grew 12% YoY" has no idea which source supports it until they scroll, cross-reference titles, and guess. That's not verification — it's archaeology.</p>
+  </div>
+
+  <p>The <a href="https://www.shapeof.ai/patterns/citations">Shape of AI citations pattern</a> calls this out: <em>inline cues work for sentence-level claims</em>. Panels and footers work for exploration; markers work for spot-checking.</p>
+
+  <h2>The principle</h2>
+  <p>Two layers of trust, working together:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Scan height</strong> (done)</td><td>TrustBar — overall confidence, provenance, source count</td></tr>
+      <tr><td><strong>Claim level</strong> (this lesson)</td><td>Superscript <code>[1]</code> on each cited key point → numbered source below</td></tr>
+    </tbody>
+  </table>
+  <p>Numbered markers are the Perplexity pattern: compact inline, full metadata in a list. Multiple markers per claim (<code>[1][2]</code>) signal synthesis across sources.</p>
+
+  <div class="source">
+    <span class="label">Primary source (skim)</span>
+    <a href="https://www.shapeof.ai/patterns/citations">Shape of AI · Citations</a> — inline highlights vs multi-source references, metadata for scanning, and why missing sources must stay explicit. See also <a href="../reference/inline-citations.html">inline citations reference</a>.
+  </div>
+
+  <h2>Build it (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create <code>lib/with-citation-links.ts</code>.</strong> Transform model-emitted <code>[1]</code> markers into markdown links the renderer can style:</p>
+<pre><code><span class="tok-key">const</span> CITATION_RE = <span class="tok-str">/\[(\d+)\]/g</span>;
+
+<span class="tok-key">export function</span> withCitationLinks(text: string): string {
+  <span class="tok-key">return</span> text.replace(
+    CITATION_RE,
+    (_match, n: string) => <span class="tok-str">`[${n}](#source-${n})`</span>
+  );
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Style citation anchors</strong> in <code>BriefArticle.tsx</code> — detect <code>#source-N</code> hrefs and render as superscript, skip dead indices:</p>
+<pre><code><span class="tok-key">function</span> citationComponents(
+  sourceCount: number
+): Components {
+  <span class="tok-key">return</span> {
+    ...inlineMarkdownComponents,
+    a: ({ href, children }) => {
+      <span class="tok-key">const</span> m = href?.match(<span class="tok-str">/^#source-(\d+)$/</span>);
+      <span class="tok-key">if</span> (m) {
+        <span class="tok-key">const</span> n = Number(m[1]);
+        <span class="tok-key">if</span> (n &lt; 1 || n &gt; sourceCount) {
+          <span class="tok-key">return</span> &lt;<span class="tok-key">span</span>&gt;[{children}]&lt;/<span class="tok-key">span</span>&gt;;
+        }
+        <span class="tok-key">return</span> (
+          &lt;<span class="tok-key">sup</span> className=<span class="tok-str">"ml-0.5"</span>&gt;
+            &lt;<span class="tok-key">a</span>
+              href={href}
+              className=<span class="tok-str">"text-[0.65em] font-semibold text-primary no-underline hover:underline"</span>
+              aria-label={<span class="tok-str">`Source ${n}`</span>}
+            &gt;
+              {children}
+            &lt;/<span class="tok-key">a</span>&gt;
+          &lt;/<span class="tok-key">sup</span>&gt;
+        );
+      }
+      <span class="tok-com">// …existing external link styles</span>
+    },
+  };
+}</code></pre>
+      <p>Pipe key points through <code>withCitationLinks</code> before <code>ReactMarkdown</code>:</p>
+<pre><code>components={citationComponents(dedupeSources(sources).length)}
+&gt;
+  {withCitationLinks(point)}
+&lt;/ReactMarkdown&gt;</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Number the source list</strong> — add anchor IDs and visible indices so markers have somewhere to land:</p>
+<pre><code>{dedupeSources(sources).map((s, i) => {
+  <span class="tok-key">const</span> n = i + 1;
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span>
+      key={sourceKey(s)}
+      id={<span class="tok-str">`source-${n}`</span>}
+      className=<span class="tok-str">"flex scroll-mt-20 items-center gap-2"</span>
+    &gt;
+      &lt;<span class="tok-key">span</span>
+        className=<span class="tok-str">"flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-[10px] font-semibold text-on-surface-variant"</span>
+        aria-hidden
+      &gt;
+        {n}
+      &lt;/<span class="tok-key">span</span>&gt;
+      &lt;<span class="tok-key">SourcePill</span> source={s} /&gt;
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+})}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Nudge the model</strong> — update schema description and system prompt so citations actually appear:</p>
+<pre><code><span class="tok-com">// lib/schemas.ts — key_points field:</span>
+.describe(
+  <span class="tok-str">"Three to five concise facts; append [1], [2] etc. when citing retrieved sources (indices match numbered source list)"</span>
+)
+
+<span class="tok-com">// lib/stream-research.ts — INSTRUCTIONS, add:</span>
+<span class="tok-str">"On key_points, append bracketed source indices like [1] or [1][2] for claims grounded in retrieval. Number sources in the order you rely on them."</span></code></pre>
+    </li>
+
+    <li>
+      <p><strong>Test three paths.</strong></p>
+      <ul>
+        <li><strong>Web search question</strong> — key points show superscript markers; clicking <code>[1]</code> scrolls to the numbered source</li>
+        <li><strong>Multi-source claim</strong> — at least one point with <code>[1][2]</code> if the model synthesizes across sources</li>
+        <li><strong>Broken index</strong> — if a marker references a source that doesn't exist, it renders as plain <code>[99]</code> text, not a dead link</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">What you ship</span>
+    <p>Claim-level <a href="../reference/inline-citations.html">inline citations</a> on key points, bidirectional with a numbered source list. TrustBar still handles scan height; markers handle spot-checking. Next up: <strong>edit-before-send</strong> on the composer, or a <strong>before/after retrofit summary</strong> to close the text-surface arc.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why markers on key points, not the summary?</summary>
+    <p>Key points are discrete, verifiable claims — the natural unit for spot-checking. The summary is synthesis; users challenge specific facts first.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why superscript numbers instead of inline URLs?</summary>
+    <p>URLs break reading flow and look like spam. Numbers are scannable; the source list carries title, favicon-domain context, and the actual link.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why keep the footer source list if markers are inline?</summary>
+    <p>Markers answer "which source?" — the list answers "what is it?" Users need both: a quick jump and a place to explore.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When you've wired the markers, tell me and I'll review the three test paths. Want edit-before-send or a retrofit wrap-up next? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0006-confirm-destructive-actions.html">← 0006: Confirm Destructive Actions</a></span>
+    <span><a href="../reference/inline-citations.html">Reference: inline citations</a></span>
+    <span>Next: edit-before-send (0008)</span>
+  </div>
+</div>
+</body>
+</html>
