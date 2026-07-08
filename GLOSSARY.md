@@ -43,3 +43,11 @@ _Avoid_: trust badge, credibility indicator
 **Calibrated uncertainty**:
 Surfacing model confidence as honest, actionable copy ("verify key claims") rather than raw enum values or false precision.
 _Avoid_: confidence score, certainty level
+
+**Human-in-the-loop**:
+A design pattern where the user confirms, edits, or approves an AI or UI action before it executes — especially when the action is irreversible or high-impact.
+_Avoid_: HITL, approval flow
+
+**Destructive action**:
+An operation that removes data, overwrites work, or triggers irreversible side effects. Requires confirmation by default when harm × scope × reversibility is high.
+_Avoid_: dangerous action, delete flow

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Human-in-the-Loop</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Human-in-the-Loop</h1>
+  <p class="dek">Patterns where the user confirms, edits, or approves before an AI action executes — especially when the action is irreversible or high-impact.</p>
+
+  <h2>When to gate</h2>
+  <table>
+    <thead>
+      <tr><th>Risk profile</th><th>Examples</th><th>UI treatment</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Low — skip or light ack</strong></td>
+        <td>Search, draft email, regenerate a reply</td>
+        <td>No dialog; undo or regenerate in place is enough</td>
+      </tr>
+      <tr>
+        <td><strong>Medium — confirm once</strong></td>
+        <td>Overwrite a field, send on user's behalf</td>
+        <td>Inline diff or lightweight "Apply changes?"</td>
+      </tr>
+      <tr>
+        <td><strong>High — strong confirm</strong></td>
+        <td>Delete session, purchase, share PII, bulk overwrite</td>
+        <td>Modal with explicit consequence copy; destructive button styling</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Match friction to <strong>harm × scope × reversibility</strong>. Routine tasks with easy undo should not nag; irreversible loss-of-work actions should always pause.</p>
+
+  <h2>Destructive-action dialog checklist</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Name what gets lost</strong></td><td>"Conversation and uploaded documents" — not "Are you sure?"</td></tr>
+      <tr><td><strong>Default to safe</strong></td><td>Focus Cancel; Escape dismisses; backdrop click cancels</td></tr>
+      <tr><td><strong>Skip when nothing to lose</strong></td><td>Empty chat + no uploads → run immediately, no dialog</td></tr>
+      <tr><td><strong>Disable while busy</strong></td><td>Don't open confirm during an in-flight stream</td></tr>
+      <tr><td><strong>Accessible</strong></td><td><code>role="dialog"</code>, <code>aria-modal</code>, labelled title</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Related patterns (later lessons)</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Edit-before-send</strong></td><td>User reviews and tweaks the model's draft before it ships</td></tr>
+      <tr><td><strong>Tool approval</strong></td><td>Agent proposes an action; user approves before execution</td></tr>
+      <tr><td><strong>Sample response</strong></td><td>Verify a small preview before a heavy/expensive run</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://www.shapeof.ai/patterns/verification">Shape of AI · Verification</a> ·
+    <a href="https://uxdesign.cc/the-trust-latency-gap-why-the-future-of-ux-is-intentionally-slower-3433c1787d5e">The Trust-Latency Gap</a> (strategic friction)
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="trust-signals.html">← Trust signals</a></span>
+    <span><a href="../lessons/0006-confirm-destructive-actions.html">Lesson 0006</a></span>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0006 · Confirm Destructive Actions</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0006</p>
+  <h1>Confirm Destructive Actions</h1>
+  <p class="dek">Trust signals are at scan height now. The next win is <strong>human-in-the-loop</strong> — gating irreversible actions so speed never costs the user their work.</p>
+
+  <h2>Where you actually are</h2>
+  <p>Your header has a <strong>New Chat</strong> button that fires immediately:</p>
+
+  <div class="callout warn">
+    <span class="label">Gap — one-click data loss</span>
+    <p><code>newChat()</code> stops the stream, DELETEs the server session (vector store + uploaded docs), rotates <code>sessionId</code>, and clears client state. One mis-click after a long research thread — gone. No undo.</p>
+  </div>
+
+  <p>That's a <strong>destructive action</strong>: high harm (loss of work), wide scope (entire session), low reversibility (no recycle bin). It should use <strong>strategic friction</strong> — a deliberate pause that builds confidence instead of eroding it.</p>
+
+  <h2>The principle</h2>
+  <p>Not every AI interaction needs a confirmation. Match friction to <em>harm × scope × reversibility</em>:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Low risk</strong></td><td>Search, regenerate, copy brief → no dialog; undo/recover is enough.</td></tr>
+      <tr><td><strong>High risk</strong></td><td>Delete session, overwrite data, send on user's behalf → confirm before execute.</td></tr>
+      <tr><td><strong>Nothing to lose</strong></td><td>Empty chat, no uploads → skip the dialog; friction with no benefit is prompt fatigue.</td></tr>
+    </tbody>
+  </table>
+  <p>A good confirm dialog names <em>what gets lost</em> in plain language — not "Are you sure?"</p>
+
+  <div class="source">
+    <span class="label">Primary source (skim)</span>
+    <a href="https://www.shapeof.ai/patterns/verification">Shape of AI · Verification</a> — when to require human verification, matching friction to risk, and keeping lightweight checks lightweight. Pair with <a href="https://uxdesign.cc/the-trust-latency-gap-why-the-future-of-ux-is-intentionally-slower-3433c1787d5e">The Trust-Latency Gap</a> for why intentional slowdowns build trust on high-stakes actions.
+  </div>
+
+  <h2>Build it (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create <code>components/ResearchChat/ConfirmDialog.tsx</code>.</strong> A reusable gate — accessible, focus-safe, backdrop dismiss:</p>
+<pre><code><span class="tok-str">"use client"</span>;
+
+<span class="tok-key">import</span> { useEffect, useId, useRef } <span class="tok-key">from</span> <span class="tok-str">"react"</span>;
+
+<span class="tok-key">export function</span> ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel = <span class="tok-str">"Confirm"</span>,
+  cancelLabel = <span class="tok-str">"Cancel"</span>,
+  destructive = <span class="tok-key">false</span>,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+  onConfirm: () => <span class="tok-key">void</span>;
+  onCancel: () => <span class="tok-key">void</span>;
+}) {
+  <span class="tok-key">const</span> titleId = useId();
+  <span class="tok-key">const</span> cancelRef = useRef&lt;HTMLButtonElement&gt;(null);
+
+  useEffect(() => {
+    <span class="tok-key">if</span> (!open) <span class="tok-key">return</span>;
+    cancelRef.current?.focus();
+    <span class="tok-key">const</span> onKeyDown = (e: KeyboardEvent) => {
+      <span class="tok-key">if</span> (e.key === <span class="tok-str">"Escape"</span>) onCancel();
+    };
+    document.addEventListener(<span class="tok-str">"keydown"</span>, onKeyDown);
+    <span class="tok-key">return</span> () => document.removeEventListener(<span class="tok-str">"keydown"</span>, onKeyDown);
+  }, [open, onCancel]);
+
+  <span class="tok-key">if</span> (!open) <span class="tok-key">return null</span>;
+
+  <span class="tok-key">return</span> (
+    &lt;<span class="tok-key">div</span>
+      className=<span class="tok-str">"fixed inset-0 z-50 flex items-center justify-center p-4"</span>
+      onClick={onCancel}
+    &gt;
+      &lt;<span class="tok-key">div</span>
+        className=<span class="tok-str">"absolute inset-0 bg-inverse-surface/40"</span>
+        aria-hidden
+      /&gt;
+      &lt;<span class="tok-key">div</span>
+        role=<span class="tok-str">"dialog"</span>
+        aria-modal=<span class="tok-str">"true"</span>
+        aria-labelledby={titleId}
+        className=<span class="tok-str">"relative z-10 w-full max-w-md rounded-xl border border-outline-variant bg-background p-6 shadow-lg"</span>
+        onClick={(e) => e.stopPropagation()}
+      &gt;
+        &lt;<span class="tok-key">h2</span>
+          id={titleId}
+          className=<span class="tok-str">"text-lg font-semibold text-foreground"</span>
+        &gt;
+          {title}
+        &lt;/<span class="tok-key">h2</span>&gt;
+        &lt;<span class="tok-key">p</span> className=<span class="tok-str">"mt-2 text-sm leading-relaxed text-on-surface-variant"</span>&gt;
+          {description}
+        &lt;/<span class="tok-key">p</span>&gt;
+        &lt;<span class="tok-key">div</span> className=<span class="tok-str">"mt-6 flex justify-end gap-2"</span>&gt;
+          &lt;<span class="tok-key">button</span>
+            ref={cancelRef}
+            type=<span class="tok-str">"button"</span>
+            onClick={onCancel}
+            className=<span class="tok-str">"rounded-lg border border-outline-variant px-4 py-2 text-sm font-medium text-foreground hover:bg-surface-container-low"</span>
+          &gt;
+            {cancelLabel}
+          &lt;/<span class="tok-key">button</span>&gt;
+          &lt;<span class="tok-key">button</span>
+            type=<span class="tok-str">"button"</span>
+            onClick={onConfirm}
+            className={
+              destructive
+                ? <span class="tok-str">"rounded-lg bg-error px-4 py-2 text-sm font-medium text-on-error hover:bg-error/90"</span>
+                : <span class="tok-str">"rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-dark"</span>
+            }
+          &gt;
+            {confirmLabel}
+          &lt;/<span class="tok-key">button</span>&gt;
+        &lt;/<span class="tok-key">div</span>&gt;
+      &lt;/<span class="tok-key">div</span>&gt;
+    &lt;/<span class="tok-key">div</span>&gt;
+  );
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Gate <code>newChat</code></strong> in <code>ResearchChat/index.tsx</code> — open the dialog only when there's something to lose:</p>
+<pre><code><span class="tok-key">import</span> { ConfirmDialog } <span class="tok-key">from</span> <span class="tok-str">"./ConfirmDialog"</span>;
+
+<span class="tok-key">const</span> [confirmNewChat, setConfirmNewChat] = useState(<span class="tok-key">false</span>);
+
+<span class="tok-key">function</span> requestNewChat() {
+  <span class="tok-key">if</span> (isEmpty &amp;&amp; uploadedFiles.length === 0) {
+    <span class="tok-key">void</span> newChat();
+    <span class="tok-key">return</span>;
+  }
+  setConfirmNewChat(<span class="tok-key">true</span>);
+}
+
+<span class="tok-com">// header button:</span>
+onClick={() => requestNewChat()}
+
+<span class="tok-com">// before closing &lt;/div&gt; of the root layout:</span>
+&lt;<span class="tok-key">ConfirmDialog</span>
+  open={confirmNewChat}
+  title=<span class="tok-str">"Start a new chat?"</span>
+  description=<span class="tok-str">"This clears your conversation and uploaded documents from this session. This can't be undone."</span>
+  confirmLabel=<span class="tok-str">"New chat"</span>
+  destructive
+  onConfirm={() => {
+    setConfirmNewChat(<span class="tok-key">false</span>);
+    <span class="tok-key">void</span> newChat();
+  }}
+  onCancel={() => setConfirmNewChat(<span class="tok-key">false</span>)}
+/&gt;</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Test three paths.</strong></p>
+      <ul>
+        <li><strong>Empty state:</strong> fresh load → New Chat runs immediately, no dialog</li>
+        <li><strong>With history:</strong> after one completed brief → dialog appears; Cancel keeps everything; confirm clears the thread</li>
+        <li><strong>With uploads:</strong> attach a PDF (even before asking a question) → dialog mentions documents; confirm clears the file chips</li>
+      </ul>
+      <p>Also verify: dialog won't open while <code>busy</code> (button stays disabled), Escape and backdrop click dismiss without side effects.</p>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">What you ship</span>
+    <p><a href="../reference/human-in-the-loop.html">Human-in-the-loop</a> for session reset — strategic friction where loss-of-work risk is real, instant action where it isn't. Next up: <strong>inline citations</strong> (claim-level verification) or <strong>edit-before-send</strong> on the composer.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why skip the dialog on an empty chat?</summary>
+    <p>Confirmation friction should match risk. With no turns and no uploads, there's nothing to lose — a dialog would only train users to click through without reading.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why focus Cancel instead of the destructive button?</summary>
+    <p>Default-to-safe: the reversible action gets keyboard focus so a hurried Enter/Escape doesn't accidentally wipe a session.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When you've wired the dialog, tell me and I'll review the three test paths. Want inline citation markers or edit-before-send next? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0005-calibrated-trust-bar.html">← 0005: Calibrated Trust Bar</a></span>
+    <span><a href="../reference/human-in-the-loop.html">Reference: human-in-the-loop</a></span>
+    <span>Next: inline citations (0007)</span>
+  </div>
+</div>
+</body>
+</html>

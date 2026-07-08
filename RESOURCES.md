@@ -21,6 +21,8 @@
   Argues that as AI execution nears zero latency, trust needs *strategic friction* — deliberate speed bumps that build confidence. Use for: perceived-latency and confirmation-flow lessons.
 - [Shape of AI — Citations pattern](https://www.shapeof.ai/patterns/citations)
   Where to place citations, metadata for scanning, hover previews, and why missing sources must be explicit. Use for: trust-signal and citation lessons.
+- [Shape of AI — Verification pattern](https://www.shapeof.ai/patterns/verification)
+  When to require human verification before AI actions, matching friction to harm/scope/reversibility. Use for: human-in-the-loop and destructive-action confirmation lessons.
 
 ### Implementation (stack)
 - [Vercel AI SDK — Chatbot (useChat)](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot)
