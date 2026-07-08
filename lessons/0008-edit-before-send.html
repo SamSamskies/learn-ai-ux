@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0008 · Edit-Before-Send</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0008</p>
+  <h1>Edit-Before-Send</h1>
+  <p class="dek">Citations are claim-level now. The next human-in-the-loop win is <strong>before the run</strong> — let AI sharpen a rough question, but keep the user in the driver's seat until they hit Send.</p>
+
+  <h2>Where you actually are</h2>
+  <p>Your composer is honest: what you type is what gets researched. That's good for agency, but vague questions waste an expensive multi-tool run:</p>
+
+  <div class="callout warn">
+    <span class="label">Gap — no prompt assistance at the front door</span>
+    <p><code>"competitors"</code> or <code>"is this a good idea"</code> goes straight to web search + structured output. The model guesses scope. Users can't see or fix a rewrite because there isn't one — they only discover the mismatch after the brief lands.</p>
+  </div>
+
+  <p>The <a href="https://www.shapeof.ai/patterns/prompt-enhancer">Shape of AI prompt enhancer pattern</a> brings hidden prompt rewriting into the open: suggest a clearer question, drop it in the composer, let the user edit, <em>then</em> send. That's <strong>edit-before-send</strong> — human-in-the-loop on the instruction itself.</p>
+
+  <h2>The principle</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Enhance explicitly</strong></td><td>Label the action ("Refine") and the result ("Refined — review before sending")</td></tr>
+      <tr><td><strong>Never auto-send</strong></td><td>Refined text replaces the draft in the textarea; Send stays manual</td></tr>
+      <tr><td><strong>Undo beats retype</strong></td><td>One click restores the original draft if the rewrite drifts</td></tr>
+      <tr><td><strong>Lightweight call</strong></td><td>Fast model, no tools — this is cheap intent-shaping, not a full research run</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary source (skim)</span>
+    <a href="https://www.shapeof.ai/patterns/prompt-enhancer">Shape of AI · Prompt enhancer</a> — make enhancement explicit and reviewable, preserve user intent, require just enough input before enhancing. See also <a href="../reference/edit-before-send.html">edit-before-send reference</a>.
+  </div>
+
+  <h2>Build it (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create <code>lib/refine-prompt.ts</code>.</strong> A small server helper — one job, no tools:</p>
+<pre><code><span class="tok-key">import</span> <span class="tok-str">"server-only"</span>;
+<span class="tok-key">import</span> { openai } <span class="tok-key">from</span> <span class="tok-str">"@ai-sdk/openai"</span>;
+<span class="tok-key">import</span> { generateText } <span class="tok-key">from</span> <span class="tok-str">"ai"</span>;
+
+<span class="tok-key">const</span> INSTRUCTIONS =
+  <span class="tok-str">"Improve research questions for a solo builder. Rewrite the draft into one clear, specific question. Preserve topic and constraints. Do not invent facts. Return only the improved question."</span>;
+
+<span class="tok-key">export async function</span> refinePrompt(draft: string): Promise&lt;string&gt; {
+  <span class="tok-key">const</span> { text } = <span class="tok-key">await</span> generateText({
+    model: openai(<span class="tok-str">"gpt-4o-mini"</span>),
+    system: INSTRUCTIONS,
+    prompt: draft,
+  });
+  <span class="tok-key">return</span> text.trim();
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Add <code>app/api/refine-prompt/route.ts</code>.</strong> Reuse your existing <code>guard</code> — same auth/rate-limit as research:</p>
+<pre><code><span class="tok-key">import</span> { guard } <span class="tok-key">from</span> <span class="tok-str">"@/lib/guard"</span>;
+<span class="tok-key">import</span> { refinePrompt } <span class="tok-key">from</span> <span class="tok-str">"@/lib/refine-prompt"</span>;
+
+<span class="tok-key">export async function</span> POST(req: Request) {
+  <span class="tok-key">const</span> auth = guard.checkAuth(req);
+  <span class="tok-key">if</span> (!auth.ok) <span class="tok-key">return</span> Response.json({ error: auth.error }, { status: auth.status });
+  <span class="tok-key">const</span> rate = guard.checkRateLimit(req);
+  <span class="tok-key">if</span> (!rate.ok) <span class="tok-key">return</span> Response.json({ error: rate.error }, { status: rate.status });
+
+  <span class="tok-key">const</span> { draft } = <span class="tok-key">await</span> req.json();
+  <span class="tok-key">if</span> (<span class="tok-key">typeof</span> draft !== <span class="tok-str">"string"</span> || draft.trim().length &lt; 8) {
+    <span class="tok-key">return</span> Response.json({ error: <span class="tok-str">"draft too short"</span> }, { status: 400 });
+  }
+  <span class="tok-key">const</span> refined = <span class="tok-key">await</span> refinePrompt(draft.trim());
+  <span class="tok-key">return</span> Response.json({ refined });
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Wire refine state in <code>ResearchChat/index.tsx</code>.</strong> Track the pre-refine draft for undo; call the API; never call <code>send()</code> from refine:</p>
+<pre><code><span class="tok-key">const</span> [refining, setRefining] = useState(<span class="tok-key">false</span>);
+<span class="tok-key">const</span> [refined, setRefined] = useState(<span class="tok-key">false</span>);
+<span class="tok-key">const</span> draftBeforeRefineRef = useRef&lt;string | <span class="tok-key">null</span>&gt;(<span class="tok-key">null</span>);
+
+<span class="tok-key">async function</span> onRefine() {
+  <span class="tok-key">const</span> draft = input.trim();
+  <span class="tok-key">if</span> (draft.length &lt; 8 || busy || uploading || refining) <span class="tok-key">return</span>;
+  draftBeforeRefineRef.current = input;
+  setRefining(<span class="tok-key">true</span>);
+  <span class="tok-key">try</span> {
+    <span class="tok-key">const</span> res = <span class="tok-key">await</span> fetch(<span class="tok-str">"/api/refine-prompt"</span>, {
+      method: <span class="tok-str">"POST"</span>,
+      headers: { <span class="tok-str">"Content-Type"</span>: <span class="tok-str">"application/json"</span>, ...authHeaders() },
+      body: JSON.stringify({ draft }),
+    });
+    <span class="tok-key">if</span> (!res.ok) <span class="tok-key">throw new</span> Error(<span class="tok-str">"refine failed"</span>);
+    <span class="tok-key">const</span> { refined: next } = <span class="tok-key">await</span> res.json();
+    setInput(next);
+    setRefined(<span class="tok-key">true</span>);
+    textareaRef.current?.focus();
+  } <span class="tok-key">finally</span> {
+    setRefining(<span class="tok-key">false</span>);
+  }
+}
+
+<span class="tok-key">function</span> undoRefine() {
+  <span class="tok-key">if</span> (draftBeforeRefineRef.current != <span class="tok-key">null</span>) {
+    setInput(draftBeforeRefineRef.current);
+    draftBeforeRefineRef.current = <span class="tok-key">null</span>;
+  }
+  setRefined(<span class="tok-key">false</span>);
+}
+
+<span class="tok-com">// Clear refined banner when user edits manually:</span>
+<span class="tok-key">function</span> onInputChange(value: string) {
+  setInput(value);
+  <span class="tok-key">if</span> (refined) setRefined(<span class="tok-key">false</span>);
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Add Refine + notice to <code>ChatComposer.tsx</code>.</strong> Button beside the paperclip; banner above the form when refined:</p>
+<pre><code>{refined && (
+  &lt;<span class="tok-key">div</span> className=<span class="tok-str">"mb-2 flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-foreground"</span>&gt;
+    &lt;<span class="tok-key">span</span>&gt;Refined — review before sending&lt;/<span class="tok-key">span</span>&gt;
+    &lt;<span class="tok-key">button</span> type=<span class="tok-str">"button"</span> onClick={onUndoRefine} className=<span class="tok-str">"text-primary underline-offset-2 hover:underline"</span>&gt;
+      Undo
+    &lt;/<span class="tok-key">button</span>&gt;
+  &lt;/<span class="tok-key">div</span>&gt;
+)}
+&lt;<span class="tok-key">button</span>
+  type=<span class="tok-str">"button"</span>
+  onClick={onRefine}
+  disabled={input.trim().length &lt; 8 || busy || uploading || refining}
+  aria-label=<span class="tok-str">"Refine question"</span>
+  className=<span class="tok-str">"…"</span>
+&gt;
+  {refining ? <span class="tok-str">"…"</span> : <span class="tok-str">"Refine"</span>}
+&lt;/<span class="tok-key">button</span>&gt;</code></pre>
+      <p>Keep Refine as a text label or a small sparkle icon — but always with an <code>aria-label</code>.</p>
+    </li>
+
+    <li>
+      <p><strong>Test three paths.</strong></p>
+      <ul>
+        <li><strong>Vague draft</strong> — type <code>competitors</code> → Refine → textarea shows a specific question → edit one word → Send runs <em>your</em> version</li>
+        <li><strong>Undo</strong> — Refine → Undo restores the exact original draft; banner clears</li>
+        <li><strong>Guardrails</strong> — Refine disabled below 8 chars, while <code>busy</code>, and during upload; refine never fires <code>sendMessage</code> on its own</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout key">
+    <span class="label">What you ship</span>
+    <p><a href="../reference/edit-before-send.html">Edit-before-send</a> on the composer — explicit prompt enhancement with undo, no auto-send. Human-in-the-loop now covers session reset (L6), claim verification (L7), and pre-run intent (L8). Next up: a <strong>retrofit wrap-up</strong> — before/after story and checklist to close the text-surface arc.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why not auto-send after Refine?</summary>
+    <p>Enhancement is a draft, not a decision. Auto-send abdicates agency and burns compute on rewrites the user would have trimmed.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why a separate lightweight endpoint?</summary>
+    <p>Research runs tools + structured output — seconds and dollars. Refine is a single cheap text call. Mixing them couples latency and hides the UX boundary between "shape my question" and "answer it."</p>
+  </details>
+  <details class="selfcheck">
+    <summary>How is this different from lesson 7's citation post-processing?</summary>
+    <p>Same philosophy: don't bet the UX on model discipline alone. L7 fixed citations deterministically after generation; L8 fixes intent explicitly before generation. Both keep the user in control.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — build it, then show me.</strong> When Refine + Undo are wired, tell me and I'll review the three test paths. Want the retrofit wrap-up next? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0007-inline-citation-markers.html">← 0007: Inline Citation Markers</a></span>
+    <span><a href="../reference/edit-before-send.html">Reference: edit-before-send</a></span>
+    <span>Next: retrofit wrap-up (0009)</span>
+  </div>
+</div>
+</body>
+</html>

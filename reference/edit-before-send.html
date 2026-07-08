@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Edit-Before-Send</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Edit-Before-Send</h1>
+  <p class="dek">When AI rewrites or suggests a prompt, put the result in the composer — never auto-send. The user reviews, edits, and submits on their terms.</p>
+
+  <h2>When to use</h2>
+  <table>
+    <thead>
+      <tr><th>Situation</th><th>Why edit-before-send</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Prompt enhancement</strong></td>
+        <td>AI clarifies a vague question — user must catch scope creep or wrong assumptions before a run</td>
+      </tr>
+      <tr>
+        <td><strong>Suggested follow-ups</strong></td>
+        <td>Chips populate the composer; user tweaks wording before sending</td>
+      </tr>
+      <tr>
+        <td><strong>Draft actions</strong></td>
+        <td>Agent proposes an email or query — user edits the payload before execute</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Contrast with <strong>silent rewrite</strong>: many systems enhance prompts server-side without showing the user. That saves a click but hides intent drift and teaches nothing.</p>
+
+  <h2>Prompt enhancer checklist</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Never auto-send</strong></td><td>Refined text lands in the textarea; Send stays manual</td></tr>
+      <tr><td><strong>Label the change</strong></td><td>Banner or chip: "Refined — review before sending"</td></tr>
+      <tr><td><strong>Undo to original</strong></td><td>One click restores the user's draft if the rewrite misses</td></tr>
+      <tr><td><strong>Preserve intent</strong></td><td>Keep nouns and constraints; don't invent facts or widen scope silently</td></tr>
+      <tr><td><strong>Gate on input</strong></td><td>Min character threshold or disabled state with clear affordance — not a mystery gray button</td></tr>
+      <tr><td><strong>Disable while busy</strong></td><td>No refine during an in-flight research stream</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Common mistakes</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Auto-send after refine</strong></td><td>User loses agency; wrong rewrites burn compute and trust</td></tr>
+      <tr><td><strong>No undo</strong></td><td>Forces manual retyping when the enhancement is 80% right</td></tr>
+      <tr><td><strong>Hidden enhancement</strong></td><td>Server rewrites without surfacing — user can't learn or correct</td></tr>
+      <tr><td><strong>Refine on empty</strong></td><td>Produces generic filler; needs the user's seed intent</td></tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://www.shapeof.ai/patterns/prompt-enhancer">Shape of AI · Prompt enhancer</a> (explicit, reviewable enhancement) ·
+    <a href="https://www.shapeof.ai/patterns/verification">Shape of AI · Verification</a> (sample response before heavy runs)
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="human-in-the-loop.html">← Human-in-the-loop</a></span>
+    <span><a href="../lessons/0008-edit-before-send.html">Lesson 0008</a></span>
+  </div>
+</div>
+</body>
+</html>

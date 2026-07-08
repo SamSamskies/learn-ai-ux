@@ -23,6 +23,8 @@
   Where to place citations, metadata for scanning, hover previews, and why missing sources must be explicit. Use for: trust-signal and citation lessons.
 - [Shape of AI — Verification pattern](https://www.shapeof.ai/patterns/verification)
   When to require human verification before AI actions, matching friction to harm/scope/reversibility. Use for: human-in-the-loop and destructive-action confirmation lessons.
+- [Shape of AI — Prompt enhancer pattern](https://www.shapeof.ai/patterns/prompt-enhancer)
+  Explicit, reviewable prompt rewriting before a run — preserve intent, never auto-send, offer undo. Use for: edit-before-send and composer-assistance lessons.
 
 ### Implementation (stack)
 - [Vercel AI SDK — Chatbot (useChat)](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot)

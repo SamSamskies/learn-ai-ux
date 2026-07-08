@@ -55,3 +55,7 @@ _Avoid_: dangerous action, delete flow
 **Inline citation**:
 A compact marker (typically a superscript number) embedded in synthesis text that links a specific claim to a numbered source — enabling claim-level verification without breaking reading flow.
 _Avoid_: footnote, reference link
+
+**Edit-before-send**:
+A human-in-the-loop pattern where AI-suggested or enhanced content lands in an editable draft surface (typically the composer) and only executes after the user reviews and submits manually — never auto-sent.
+_Avoid_: prompt rewrite, auto-enhance

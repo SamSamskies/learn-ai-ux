@@ -17,6 +17,9 @@
 - Repo: `github.com/SamSamskies/learnopenai/tree/main/research-assistant` (Next.js App Router). Main component: `components/ResearchChat.tsx`. Custom streaming: server emits a `data-research` UI-message part carrying `ResearchUIState` (`lib/research-state.ts`), read via `lib/read-research-stream.ts`. Uses `useChat` from `@ai-sdk/react` + `DefaultChatTransport`. Tailwind w/ Material-ish design tokens. Exercises target a local clone of this repo.
 - Notable: he already streams *labeled steps* + progressive structured output — more advanced than the Lesson 0001 baseline.
 
+## Lesson 7 note
+- Schema/prompt nudging for `[n]` markers was unreliable. Learner shipped **deterministic post-processing** instead (`lib/citations.ts` → `prepareCitedText`): maps domains, markdown links, and numeric markers onto the numbered source list. Prefer this pattern when model discipline is the weak link.
+
 ## Open threads
 - Exercises land in the real research-assistant codebase (local clone).
 - Decide whether he wants AI Elements (Vercel's prebuilt AI components) or hand-rolled components for the retrofit.
