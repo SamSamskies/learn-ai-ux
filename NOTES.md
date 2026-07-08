@@ -24,9 +24,14 @@
 - Exercises land in the real research-assistant codebase (local clone).
 - Decide whether he wants AI Elements (Vercel's prebuilt AI components) or hand-rolled components for the retrofit.
 
-## Phase 2 text arc (lessons 0001–0009)
-- Complete after lesson 0009 wrap-up: lifecycle, trust, HITL, perceived latency on the research assistant.
-- Learner ships `docs/UX-RETROFIT.md` in their repo as the portfolio artifact.
+## Phase 2 text arc (lessons 0001–0009) — closed
+- Shipped: lifecycle, trust, HITL, perceived latency on the research assistant.
+- Lesson 0009 audit completed; portfolio artifact (`docs/UX-RETROFIT.md`) skipped by choice.
+- Motivation: personal AI apps + open source contribution, not job hunting. Skip interview/demo-script framing.
+
+## Phase 3 voice & realtime arc (lesson 0010+)
+- Primary tool: OpenAI Realtime API (WebRTC in browser).
+- First lesson: map text lifecycle → realtime lifecycle; ship a minimal voice probe with legible connection phases.
 
 ## Future topics (backlog)
 - **Voice, Realtime & Multimodal** — wants to cover at some point. Text is only one surface; voice/multimodal is one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to his frontend background (hard interface problem). Concepts to hit:

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Realtime Voice Lifecycle</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Realtime Voice Lifecycle</h1>
+  <p class="dek">The states a speech-to-speech session moves through — and how they map to the text lifecycle you already shipped.</p>
+
+  <h2>Text → voice mapping</h2>
+  <table>
+    <thead>
+      <tr><th>Text (Phase 2)</th><th>Voice (Phase 3)</th><th>What's different</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip">idle</span></td>
+        <td><span class="chip">idle</span></td>
+        <td>Session may stay open; mic is off or gated until user acts.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">submitted</span></td>
+        <td><span class="chip">connecting</span></td>
+        <td>WebRTC handshake + ephemeral token mint — must be legible; silence feels broken.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">thinking</span></td>
+        <td><span class="chip">listening</span> / <span class="chip">thinking</span></td>
+        <td>Two gaps: waiting for user speech end (VAD), then model reasoning before first audio.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">streaming</span></td>
+        <td><span class="chip">speaking</span></td>
+        <td>Audio plays in real time; partial transcript deltas are the visual stream.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">complete</span></td>
+        <td><span class="chip">complete</span></td>
+        <td>Turn done; mic re-opens for next utterance.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">stopped</span></td>
+        <td><span class="chip">interrupted</span></td>
+        <td>Barge-in cancels model audio; preserve partial transcript, not an error.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">error</span></td>
+        <td><span class="chip">error</span></td>
+        <td>Mic permission denied, connection drop, rate limit — plain copy + retry.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Realtime phases (derive from events)</h2>
+  <table>
+    <thead>
+      <tr><th>Phase</th><th>Trigger (data channel)</th><th>UI treatment</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip">idle</span></td>
+        <td>Session open, no active turn</td>
+        <td>Connect / hold-to-talk affordance. Never leave the screen blank.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">connecting</span></td>
+        <td>Before <code>session.created</code></td>
+        <td>"Connecting…" — distinct from thinking. Disable double-connect.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">listening</span></td>
+        <td><code>input_audio_buffer.speech_started</code></td>
+        <td>Live input indicator — user is being heard. Partial transcript optional.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">thinking</span></td>
+        <td>Speech stopped → before first <code>response.output_audio.delta</code></td>
+        <td>Named wait ("Thinking…") — the trust gap, same as text.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">speaking</span></td>
+        <td><code>response.output_audio.delta</code> (or transcript deltas)</td>
+        <td>Waveform or pulsing avatar + streaming transcript. Offer interrupt.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">interrupted</span></td>
+        <td><code>response.cancelled</code> / barge-in</td>
+        <td>Stop audio immediately; keep partial transcript; return to listening.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">error</span></td>
+        <td>Connection close, mic denied, API error event</td>
+        <td>Friendly copy + reconnect. Never raw WebRTC errors.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Two architectures</h2>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>When</th><th>UX tradeoff</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Speech-to-speech</strong> (Realtime API)</td>
+        <td>Natural conversation, barge-in, low latency</td>
+        <td>Less control over intermediate text; best feel, harder to debug.</td>
+      </tr>
+      <tr>
+        <td><strong>Chained</strong> (STT → LLM → TTS)</td>
+        <td>Approval flows, reuse text agent, durable transcripts</td>
+        <td>Higher latency; each stage is a UI surface you own explicitly.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Latency budget (rule of thumb)</h2>
+  <p>Conversational voice breaks around <strong>~500–800&nbsp;ms</strong> from end-of-speech to first model audio. Budget it:</p>
+  <ul>
+    <li><strong>Connection</strong> — warm session or show connecting state; don't cold-start on every utterance.</li>
+    <li><strong>VAD tail</strong> — server turn detection adds silence before "thinking" starts.</li>
+    <li><strong>First audio</strong> — the thinking gap; show visual progress if audio is late.</li>
+  </ul>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0010-realtime-lifecycle-map.html">← Lesson 0010</a></span>
+    <span><a href="../reference/response-lifecycle.html">Text lifecycle reference</a></span>
+  </div>
+</div>
+</body>
+</html>

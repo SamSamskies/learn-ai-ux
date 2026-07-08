@@ -1,7 +1,7 @@
 # Mission: AI Product UX & Interaction Design (Roadmap Phase 2)
 
 ## Why
-I'm a 10+ year frontend engineer becoming an AI Product Engineer. My edge over backend/ML engineers is building interfaces — and the hardest part of an AI product is the UX over nondeterministic, streaming, sometimes-wrong output. I want to turn that background into a genuine differentiator by learning to make AI feel fast, trustworthy, and usable.
+I'm a 10+ year frontend engineer leveling up as an AI Product Engineer — not for a job hunt, but to build good AI apps for myself and contribute useful UX patterns to open source. My edge over backend/ML engineers is interfaces, and the hardest part of an AI product is the UX over nondeterministic, streaming, sometimes-wrong output.
 
 ## Success looks like
 - I have **retrofitted polished AI UX onto my Phase 1 research assistant** (Vercel AI SDK + Next.js/React) so it feels like a real product, not a demo.
@@ -9,7 +9,7 @@ I'm a 10+ year frontend engineer becoming an AI Product Engineer. My edge over b
 - I can build **human-in-the-loop** flows (tool/action approval, edit-before-send, confirm destructive actions).
 - I can surface **trust signals**: citations, sources, and calibrated uncertainty rather than false confidence.
 - I can reason about **perceived latency** (acknowledge instantly, make progress legible, know when to add strategic friction) and apply optimistic updates.
-- I have at least one before/after I can point to and explain the UX decisions behind.
+- I can explain the UX decisions behind my builds — in code comments, PRs, or docs — so others can learn from or reuse them.
 
 ## Next horizon (planned, after the text-surface core)
 Text is only one surface. Voice and multimodal are one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to my frontend background — it's exactly the kind of hard interface problem I want to own. Once the text-surface retrofit is solid, extend into:

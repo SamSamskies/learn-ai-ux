@@ -34,9 +34,15 @@
 - [vercel/ai — chat.ts source (ChatStatus)](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat.ts)
   The source of truth for the status state machine and abort handling. Use for: when docs are ambiguous about edge cases (abort, network errors).
 
-### Voice, realtime & multimodal (next horizon)
+### Voice, realtime & multimodal (Phase 3)
+- [OpenAI — Voice agents](https://developers.openai.com/api/docs/guides/voice-agents)
+  Architecture choice: speech-to-speech (Realtime API) vs chained STT→agent→TTS. Browser path uses ephemeral client secrets + WebRTC. Use for: lesson 0010+ hands-on builds.
 - [OpenAI Realtime API — docs](https://platform.openai.com/docs/guides/realtime)
-  Speech-to-speech, low-latency voice agents over WebRTC/WebSocket. Handles audio in/out, interruption/barge-in, and turn detection server-side. Use for: the realtime interaction, barge-in/turn-taking, and latency-budget lessons when the mission extends past the text surface.
+  Speech-to-speech, low-latency voice agents over WebRTC/WebSocket. Handles audio in/out, interruption/barge-in, and turn detection server-side. Use for: the realtime interaction, barge-in/turn-taking, and latency-budget lessons.
+- [OpenAI — Realtime API with WebRTC](https://developers.openai.com/api/docs/guides/realtime-webrtc)
+  Ephemeral token mint + browser peer connection flow. Use for: implementing the voice probe and connection-phase UI.
+- [openai/openai-realtime-console (GitHub)](https://github.com/openai/openai-realtime-console/)
+  Lightweight reference app for WebRTC Realtime. Use for: comparing event handling when your probe behaves unexpectedly.
 
 ## Wisdom (Communities)
 - [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0010 · Realtime Lifecycle Map</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 3 <span class="dot">·</span> Lesson 0010</p>
+  <h1>Realtime Lifecycle Map</h1>
+  <p class="dek">Text taught you seven deliberate states. Voice adds listening, speaking, and barge-in — same trust problem, harder latency budget. This lesson maps the lifecycle and ships a minimal voice probe that makes every phase visible.</p>
+
+  <h2>Why this, why now</h2>
+  <p>You closed the text arc with a polished research assistant: lifecycle states, trust signals, human-in-the-loop. Voice is the same design problem — users still need to know <em>where they are</em> in a nondeterministic wait — but audio raises the stakes. Silence isn't ambiguous; it feels <strong>broken</strong>. A 700&nbsp;ms gap without feedback kills conversational trust faster than a spinner on text.</p>
+  <p>Before you wire a full voice agent into your app, you need a <strong>probe</strong>: a tiny surface whose only job is to connect, listen, and show phases honestly. That's today's win.</p>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Derive <span class="chip">phase</span> from Realtime <em>events</em> on the WebRTC data channel — the voice equivalent of <code>derivePhase</code> on <code>useChat</code>. Render a treatment for every phase, not one mic button and hope.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this (10 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/voice-agents">OpenAI · Voice agents</a> — skim the architecture table (speech-to-speech vs chained), then the browser WebRTC flow. See also the <a href="../reference/realtime-lifecycle.html">realtime lifecycle reference</a>.
+  </div>
+
+  <h2>Know this first (~5 min)</h2>
+
+  <h3>Two paths to voice</h3>
+  <table>
+    <thead>
+      <tr><th>Architecture</th><th>Pick when…</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Speech-to-speech</strong> (Realtime API + WebRTC)</td>
+        <td>You want natural turn-taking, barge-in, and lowest latency. This arc.</td>
+      </tr>
+      <tr>
+        <td><strong>Chained</strong> (STT → your text agent → TTS)</td>
+        <td>You need approval gates, durable transcripts, or you're extending the research chat as-is.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Text states → voice states</h3>
+  <p>Your <a href="../reference/response-lifecycle.html">response lifecycle</a> still applies. Voice adds <span class="chip">connecting</span> (WebRTC handshake), <span class="chip">listening</span> (user speech detected), <span class="chip">speaking</span> (model audio out), and <span class="chip">interrupted</span> (barge-in — partial transcript preserved, not an error). Full mapping: <a href="../reference/realtime-lifecycle.html">realtime lifecycle reference</a>.</p>
+
+  <h2>Build it (~20 min)</h2>
+  <p>Add a isolated <code>/voice</code> route to your research assistant — not merged into the chat yet. One focused diff: server mints an ephemeral session; client connects via WebRTC and shows phase from events.</p>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Mint ephemeral credentials server-side.</strong> Never put your API key in the browser. Add <code>app/api/realtime/session/route.ts</code>:</p>
+<pre><code><span class="tok-key">import</span> { NextResponse } <span class="tok-key">from</span> <span class="tok-str">'next/server'</span>;
+
+<span class="tok-key">export async function</span> POST() {
+  <span class="tok-key">const</span> res = <span class="tok-key">await</span> fetch(<span class="tok-str">'https://api.openai.com/v1/realtime/client_secrets'</span>, {
+    method: <span class="tok-str">'POST'</span>,
+    headers: {
+      Authorization: <span class="tok-str">`Bearer ${process.env.OPENAI_API_KEY}`</span>,
+      <span class="tok-str">'Content-Type'</span>: <span class="tok-str">'application/json'</span>,
+    },
+    body: JSON.stringify({
+      session: {
+        type: <span class="tok-str">'realtime'</span>,
+        model: <span class="tok-str">'gpt-realtime-2.1'</span>,
+        audio: { output: { voice: <span class="tok-str">'marin'</span> } },
+      },
+    }),
+  });
+  <span class="tok-key">if</span> (!res.ok) <span class="tok-key">return</span> NextResponse.json({ error: <span class="tok-str">'mint failed'</span> }, { status: 500 });
+  <span class="tok-key">return</span> NextResponse.json(<span class="tok-key">await</span> res.json());
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Derive phase from data-channel events.</strong> Create <code>lib/realtime-phase.ts</code> — one reducer, same pattern as text <code>derivePhase</code>:</p>
+<pre><code><span class="tok-key">export type</span> RealtimePhase =
+  <span class="tok-str">'idle'</span> | <span class="tok-str">'connecting'</span> | <span class="tok-str">'listening'</span> | <span class="tok-str">'thinking'</span>
+  | <span class="tok-str">'speaking'</span> | <span class="tok-str">'interrupted'</span> | <span class="tok-str">'error'</span>;
+
+<span class="tok-key">export function</span> reduceRealtimePhase(
+  prev: RealtimePhase,
+  event: { type: string },
+): RealtimePhase {
+  <span class="tok-key">switch</span> (event.type) {
+    <span class="tok-key">case</span> <span class="tok-str">'session.created'</span>: <span class="tok-key">return</span> <span class="tok-str">'idle'</span>;
+    <span class="tok-key">case</span> <span class="tok-str">'input_audio_buffer.speech_started'</span>: <span class="tok-key">return</span> <span class="tok-str">'listening'</span>;
+    <span class="tok-key">case</span> <span class="tok-str">'input_audio_buffer.speech_stopped'</span>: <span class="tok-key">return</span> <span class="tok-str">'thinking'</span>;
+    <span class="tok-key">case</span> <span class="tok-str">'response.output_audio.delta'</span>:
+    <span class="tok-key">case</span> <span class="tok-str">'response.output_audio_transcript.delta'</span>:
+      <span class="tok-key">return</span> <span class="tok-str">'speaking'</span>;
+    <span class="tok-key">case</span> <span class="tok-str">'response.done'</span>: <span class="tok-key">return</span> <span class="tok-str">'idle'</span>;
+    <span class="tok-key">case</span> <span class="tok-str">'response.cancelled'</span>: <span class="tok-key">return</span> <span class="tok-str">'interrupted'</span>;
+    <span class="tok-key">case</span> <span class="tok-str">'error'</span>: <span class="tok-key">return</span> <span class="tok-str">'error'</span>;
+    <span class="tok-key">default</span>: <span class="tok-key">return</span> prev;
+  }
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Connect with WebRTC + show the phase.</strong> Add <code>components/VoiceProbe.tsx</code> and a page at <code>app/voice/page.tsx</code>. Core connect flow (ephemeral token → peer connection → data channel):</p>
+<pre><code><span class="tok-key">const</span> [phase, setPhase] = useState&lt;RealtimePhase&gt;(<span class="tok-str">'idle'</span>);
+<span class="tok-key">const</span> pcRef = useRef&lt;RTCPeerConnection | null&gt;(null);
+
+<span class="tok-key">async function</span> connect() {
+  setPhase(<span class="tok-str">'connecting'</span>);
+  <span class="tok-key">const</span> { value: token } = <span class="tok-key">await</span> fetch(<span class="tok-str">'/api/realtime/session'</span>, { method: <span class="tok-str">'POST'</span> }).then(r =&gt; r.json());
+
+  <span class="tok-key">const</span> pc = <span class="tok-key">new</span> RTCPeerConnection();
+  pcRef.current = pc;
+  <span class="tok-key">const</span> audio = <span class="tok-key">new</span> Audio(); audio.autoplay = <span class="tok-key">true</span>;
+  pc.ontrack = (e) =&gt; { audio.srcObject = e.streams[0]; };
+
+  <span class="tok-key">const</span> mic = <span class="tok-key">await</span> navigator.mediaDevices.getUserMedia({ audio: <span class="tok-key">true</span> });
+  pc.addTrack(mic.getTracks()[0]);
+
+  <span class="tok-key">const</span> dc = pc.createDataChannel(<span class="tok-str">'oai-events'</span>);
+  dc.onmessage = (e) =&gt; {
+    <span class="tok-key">const</span> event = JSON.parse(e.data);
+    setPhase((p) =&gt; reduceRealtimePhase(p, event));
+  };
+
+  <span class="tok-key">const</span> offer = <span class="tok-key">await</span> pc.createOffer();
+  <span class="tok-key">await</span> pc.setLocalDescription(offer);
+  <span class="tok-key">const</span> sdp = <span class="tok-key">await</span> fetch(<span class="tok-str">'https://api.openai.com/v1/realtime/calls'</span>, {
+    method: <span class="tok-str">'POST'</span>,
+    headers: { Authorization: <span class="tok-str">`Bearer ${token}`</span>, <span class="tok-str">'Content-Type'</span>: <span class="tok-str">'application/sdp'</span> },
+    body: offer.sdp,
+  }).then(r =&gt; r.text());
+  <span class="tok-key">await</span> pc.setRemoteDescription({ type: <span class="tok-str">'answer'</span>, sdp });
+}</code></pre>
+      <p>Render a large phase badge — reuse your thinking-dots / status-chip patterns from text. Each phase gets distinct copy: "Connecting…", "Listening…", "Thinking…", "Speaking…", "Interrupted — keep talking".</p>
+    </li>
+
+    <li>
+      <p><strong>Smoke-test the lifecycle.</strong> Run <code>npm run dev</code>, open <code>/voice</code>, connect, speak a short question. Watch the badge move: connecting → listening → thinking → speaking → idle. Talk over the model mid-reply — confirm <span class="chip">interrupted</span> appears (server-side VAD handles barge-in; your job is to show it).</p>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Mic permission denied → map to <span class="chip">error</span> with "Microphone access needed" — never a raw <code>DOMException</code>. Connection drops → offer Reconnect, don't leave phase stuck on <span class="chip">speaking</span>.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why derive phase from events instead of guessing from audio volume?</summary>
+    <p>Client-side volume is noisy (background sound, device differences). The Realtime API emits authoritative turn events — same reason you don't trust <code>status === 'streaming'</code> alone for the text thinking gap.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Speech-to-speech vs chained — when would you keep your research chat text-only and chain STT/TTS around it?</summary>
+    <p>When you need edit-before-send, inline citations, or tool approval on the <em>text</em> before anything is spoken — the research assistant's trust surfaces are text-native. Chained keeps each stage visible.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What's the voice equivalent of the text thinking gap?</summary>
+    <p>The interval between <code>speech_stopped</code> and the first <code>output_audio.delta</code> — user has finished talking but hears nothing. Show "Thinking…"; budget ~500–800&nbsp;ms before it feels broken.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Stuck on the WebRTC handshake, event names, or where to put files in your repo? Paste an error or point me at your diff. When the probe shows all phases, tell me and we'll add partial transcripts in the next lesson.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0009-text-surface-wrap-up.html">← 0009: Text-Surface Wrap-Up</a></span>
+    <span><a href="../reference/realtime-lifecycle.html">Reference: realtime lifecycle</a></span>
+    <span>Next: partial transcripts &amp; live cues (0011)</span>
+  </div>
+</div>
+</body>
+</html>

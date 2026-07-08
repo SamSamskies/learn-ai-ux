@@ -59,3 +59,11 @@ _Avoid_: footnote, reference link
 **Edit-before-send**:
 A human-in-the-loop pattern where AI-suggested or enhanced content lands in an editable draft surface (typically the composer) and only executes after the user reviews and submits manually — never auto-sent.
 _Avoid_: prompt rewrite, auto-enhance
+
+**Realtime phase**:
+The derived UI state of a speech-to-speech session — idle, connecting, listening, thinking, speaking, interrupted, error — computed from Realtime API data-channel events, not from raw audio levels or connection status alone.
+_Avoid_: voice state, call status
+
+**Barge-in (interrupted)**:
+When the user talks over the model mid-reply and the session cancels output audio. UX treats this as a normal turn transition: stop playback, preserve partial transcript, return to listening — not an error.
+_Avoid_: cancel, abort, talk-over
