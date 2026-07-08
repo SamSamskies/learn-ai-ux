@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Text-Surface Retrofit Checklist</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Text-Surface Retrofit Checklist</h1>
+  <p class="dek">Eight lessons, one product surface. Use this to audit your research assistant — or any chat + structured-output app — before you call the text arc done.</p>
+
+  <h2>Response lifecycle</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Pass when…</th><th>Lesson</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Every state has a treatment</strong></td>
+        <td>idle, submitted, thinking, streaming, complete, stopped, and error each render distinct UI — not one spinner</td>
+        <td><a href="../lessons/0001-response-lifecycle.html">0001</a></td>
+      </tr>
+      <tr>
+        <td><strong>Stopped preserves partial output</strong></td>
+        <td>Abort keeps streamed text, labels it user-stopped, offers regenerate in place</td>
+        <td><a href="../lessons/0002-interrupted-state.html">0002</a></td>
+      </tr>
+      <tr>
+        <td><strong>Transport errors are friendly</strong></td>
+        <td><code>useChat</code> top-level <code>error</code> maps to plain copy — never raw <code>error.message</code></td>
+        <td><a href="../lessons/0003-friendly-transport-errors.html">0003</a></td>
+      </tr>
+      <tr>
+        <td><strong>Thinking gap is legible</strong></td>
+        <td>Empty assistant message during connection shows a distinct thinking indicator, not a typing cursor</td>
+        <td><a href="../lessons/0004-legible-thinking-gap.html">0004</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Trust signals</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Pass when…</th><th>Lesson</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Scan-height provenance</strong></td>
+        <td>TrustBar (or equivalent) shows tools used, source count, and calibrated confidence copy near the headline</td>
+        <td><a href="../lessons/0005-calibrated-trust-bar.html">0005</a></td>
+      </tr>
+      <tr>
+        <td><strong>Claim-level citations</strong></td>
+        <td>Inline markers link key points to a numbered source list; post-processing covers model drift</td>
+        <td><a href="../lessons/0007-inline-citation-markers.html">0007</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Human-in-the-loop</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Pass when…</th><th>Lesson</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Destructive confirm</strong></td>
+        <td>New chat with history/uploads opens a modal naming what gets lost; empty state skips it</td>
+        <td><a href="../lessons/0006-confirm-destructive-actions.html">0006</a></td>
+      </tr>
+      <tr>
+        <td><strong>Edit-before-send</strong></td>
+        <td>Refine lands in the composer with undo; Send stays manual; refine never auto-triggers a run</td>
+        <td><a href="../lessons/0008-edit-before-send.html">0008</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Cross-cutting</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Instant acknowledgement</strong></td><td>User bubble appears and composer disables on Send before the server answers</td></tr>
+      <tr><td><strong>Named progress</strong></td><td>Research steps show labels ("Searching…") not generic "Working…"</td></tr>
+      <tr><td><strong>Scroll on send</strong></td><td>Latest turn stays in view — the wait doesn't feel like nothing happened</td></tr>
+      <tr><td><strong>Strategic friction only where earned</strong></td><td>Confirm dialogs and refine banners match real risk — not every action</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Portfolio one-liner</h2>
+  <p>When someone asks what you did: <em>"I retrofitted a Phase 1 streaming demo into a product-grade text surface — deliberate lifecycle states, legible waits, calibrated trust signals, and human-in-the-loop at destructive, verification, and pre-run decision points."</em></p>
+
+  <div class="source">
+    <span class="label">Diagnostic vocabulary</span>
+    <a href="https://www.shapeof.ai/">Shape of AI</a> — Governors, Trust Builders, Prompt Actions, Verification
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="perceived-latency.html">← Perceived latency</a></span>
+    <span><a href="../lessons/0009-text-surface-wrap-up.html">Lesson 0009</a></span>
+    <span><a href="response-lifecycle.html">Response lifecycle →</a></span>
+  </div>
+</div>
+</body>
+</html>

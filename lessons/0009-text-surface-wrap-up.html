@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0009 · Text-Surface Wrap-Up</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0009</p>
+  <h1>Text-Surface Wrap-Up</h1>
+  <p class="dek">Eight builds shipped. This lesson closes the text arc: audit what you have, write the before/after story, and leave with something you can show in a portfolio review or team demo.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Your mission success criterion isn't "I added features." It's <strong>I can point to a before/after and explain the UX decisions behind it.</strong> That story is the differentiator — frontend engineers who can articulate <em>why</em> an AI surface feels trustworthy beat engineers who only wire up streaming.</p>
+  <p>You started with a capable Phase 1 demo: streaming, labeled steps, structured output. You ended with deliberate lifecycle states, legible waits, calibrated trust, and human-in-the-loop at three decision points. This lesson makes that delta explicit.</p>
+
+  <div class="callout key">
+    <span class="label">The arc in one breath</span>
+    <p><strong>Lifecycle</strong> (0001–0004) → <strong>Trust</strong> (0005, 0007) → <strong>Human-in-the-loop</strong> (0006, 0008). Perceived latency runs through all of it — acknowledgement, named steps, strategic friction where risk is real.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source (skim)</span>
+    <a href="https://www.shapeof.ai/">Shape of AI</a> — scan the six categories and note which patterns you shipped. Use as vocabulary when you tell the story. See also the <a href="../reference/retrofit-checklist.html">retrofit checklist</a>.
+  </div>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Run the audit.</strong> Open the <a href="../reference/retrofit-checklist.html">retrofit checklist</a> beside your running app. Walk each row — lifecycle, trust, human-in-the-loop, cross-cutting. Mark anything that fails. Most learners pass 10+ of 12; one or two gaps is normal.</p>
+      <p>Common last-mile misses: scroll-on-send, thinking indicator conflated with streaming cursor, refine banner not clearing on manual edit.</p>
+    </li>
+
+    <li>
+      <p><strong>Fix one gap (if any).</strong> Pick the highest-impact fail and patch it now — not a refactor, one focused diff. If everything passes, skip to step 3.</p>
+    </li>
+
+    <li>
+      <p><strong>Add <code>docs/UX-RETROFIT.md</code> to your repo.</strong> This is the tangible artifact. Paste and fill in:</p>
+<pre><code># UX Retrofit — Research Assistant (Phase 2)
+
+## Before (Phase 1 demo)
+- Streaming worked; lifecycle states were accidental
+- Errors surfaced raw SDK text
+- Trust was implicit — sources existed but weren't scannable
+- No confirmation on session reset; no prompt assistance
+
+## After (Phase 2 product surface)
+| Area | Decision | Why |
+|------|----------|-----|
+| Lifecycle | derivePhase + distinct submitted/thinking/working | Users need to know *where* they are in a nondeterministic wait |
+| Stopped | preserve partial + regenerate in place | Abort isn't failure — it's a user choice |
+| Errors | friendly transport mapping | Raw errors erode trust and aren't actionable |
+| Trust | TrustBar + inline citations via post-processing | Scan-height provenance + claim-level verify; don't bet UX on model discipline |
+| HITL | confirm new chat; edit-before-send Refine | Strategic friction matches harm × scope × reversibility |
+
+## Demo script (~90 sec)
+1. Send a vague question → Refine → edit one word → Send
+2. Point at TrustBar while brief streams
+3. Click an inline citation marker → source list
+4. Stop mid-stream → show partial preserved → Regenerate
+5. New chat with history → confirm dialog names what gets lost
+
+## One-liner for interviews
+"I retrofitted a streaming research demo into a product-grade text surface —
+ deliberate lifecycle states, calibrated trust signals, and human-in-the-loop
+ at destructive, verification, and pre-run decision points."</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Record evidence.</strong> Capture one of:</p>
+      <ul>
+        <li><strong>Screenshot pair</strong> — before (if you have one) + after of the same flow, saved in <code>docs/</code></li>
+        <li><strong>30–60 sec screen recording</strong> — follow the demo script above</li>
+        <li><strong>PR description</strong> — if you shipped Phase 2 as a branch, paste the table from UX-RETROFIT.md into the PR body</li>
+      </ul>
+      <p>You only need one. The goal is a link you can drop in Slack or a portfolio.</p>
+    </li>
+
+    <li>
+      <p><strong>Self-grade with retrieval.</strong> Cover the checklist, then recall from memory — no peeking:</p>
+      <ul>
+        <li>Name all seven lifecycle-related states your app handles</li>
+        <li>Explain why <code>status === 'streaming'</code> alone isn't enough for the thinking gap</li>
+        <li>Give one example each of strategic friction vs instant action in your app</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h2>What's next</h2>
+  <p>The text-surface mission is complete. Your next horizon — already in <a href="../MISSION.md">MISSION.md</a> — is <strong>voice and realtime</strong>: speech-to-speech, barge-in, partial transcripts, latency budgets. Same core problem (nondeterministic AI output), harder interface constraints. OpenAI Realtime API is the primary tool when you're ready.</p>
+
+  <div class="callout">
+    <span class="label">Phase 2 text arc — closed</span>
+    <p>You can now design and implement the full response lifecycle, human-in-the-loop flows, trust signals, and perceived-latency levers on a real app. That's the frontend-engineer edge over backend/ML — shipped, not theorized.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why write UX-RETROFIT.md instead of just remembering?</summary>
+    <p>Retrieval practice builds storage strength. Writing the decision log forces you to articulate *why*, not just *what* — which is exactly what portfolio reviews and design critiques ask for.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What if I find three checklist failures?</summary>
+    <p>Fix the highest-impact one today; log the others as backlog in UX-RETROFIT.md. Perfect isn't the bar — explainable, deliberate UX is.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Is tool-approval HITL missing?</summary>
+    <p>Yes — intentionally out of scope for this text arc. Agents and tool approval are a later roadmap phase. You covered the three HITL surfaces that matter most on a research chat: destructive confirm, claim verify, pre-run intent.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — run the audit and write the doc.</strong> When UX-RETROFIT.md exists (and you've fixed or logged any gaps), tell me and I'll review your one-liner and demo script. Ready for voice/realtime? Ask.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0008-edit-before-send.html">← 0008: Edit-Before-Send</a></span>
+    <span><a href="../reference/retrofit-checklist.html">Reference: retrofit checklist</a></span>
+    <span>Next: voice &amp; realtime (Phase 3)</span>
+  </div>
+</div>
+</body>
+</html>
