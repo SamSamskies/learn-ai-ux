@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0013 · Latency Budget &amp; VAD Tuning</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0013</p>
+  <h1>Latency Budget &amp; VAD Tuning</h1>
+  <p class="dek">Lesson 0004 taught you to name the thinking gap on text. Voice adds a <em>fixed</em> cost before thinking even starts: VAD silence detection. Today's win: a turn-latency readout on your probe plus one tuned <code>silence_duration_ms</code> you can defend with numbers.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Barge-in, partial transcripts, phase badges — the probe looks like a product. But if replies feel sluggish, users blame the model when the culprit is often <strong>700&nbsp;ms of configured silence</strong> sitting on top of the thinking gap.</p>
+  <ul>
+    <li>You can't optimize latency you don't measure.</li>
+    <li><code>silence_duration_ms</code> is a product knob — shorter feels snappier, longer respects mid-sentence pauses.</li>
+    <li><code>threshold</code> is an environment knob — noisy rooms need a higher gate.</li>
+  </ul>
+  <p>Same perceived-latency playbook as text. Different stack to budget.</p>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Turn latency = VAD tail + model gap. Stamp <code>speech_stopped</code>, stop the clock on first audio. Tune VAD against a <strong>~500–800&nbsp;ms</strong> conversational budget — not vibes.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this (6 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-vad">OpenAI · Voice activity detection (VAD)</a> — focus on <code>server_vad</code> knobs and the tradeoff note on <code>silence_duration_ms</code>. Cheat sheet: <a href="../reference/realtime-latency-budget.html">latency budget reference</a>.
+  </div>
+
+  <h2>Know this first (~5 min)</h2>
+
+  <h3>What you're measuring</h3>
+  <table>
+    <thead>
+      <tr><th>Event</th><th>Meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>input_audio_buffer.speech_stopped</code></td>
+        <td>Server decided you finished talking — <strong>start the clock</strong>.</td>
+      </tr>
+      <tr>
+        <td><code>response.output_audio.delta</code> (or transcript delta)</td>
+        <td>Model is responding — <strong>stop the clock</strong>.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>This span includes VAD tail remainder + model reasoning + network. It's the number users feel as "how fast is this thing?"</p>
+
+  <h3>The VAD tradeoff</h3>
+  <table>
+    <thead>
+      <tr><th>Symptom</th><th>Dial</th><th>Direction</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Feels sluggish after I stop talking</td>
+        <td><code>silence_duration_ms</code></td>
+        <td>Lower (try 450–500)</td>
+      </tr>
+      <tr>
+        <td>Model jumps in while I'm pausing mid-thought</td>
+        <td><code>silence_duration_ms</code></td>
+        <td>Raise (try 700–900)</td>
+      </tr>
+      <tr>
+        <td>False barge-in / background noise triggers speech</td>
+        <td><code>threshold</code></td>
+        <td>Raise (you're already at 0.75 — good for desktop)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Your session route already sets <code>silence_duration_ms: 700</code>. That's patient — fine for thoughtful answers, heavy for quick back-and-forth.</p>
+
+  <h2>Build it (~20 min)</h2>
+  <p>Two changes: a latency readout in <code>VoiceProbe</code>, then one VAD tweak you validate with before/after numbers.</p>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Add a turn-latency timer.</strong> In <code>VoiceProbe/index.tsx</code>, track when the user finishes and when audio starts:</p>
+<pre><code><span class="tok-key">const</span> speechStoppedAt = useRef&lt;number | null&gt;(null);
+<span class="tok-key">const</span> [turnLatencyMs, setTurnLatencyMs] = useState&lt;number | null&gt;(null);
+
+<span class="tok-key">function</span> trackLatency(event: { type: string }) {
+  <span class="tok-key">if</span> (event.type === <span class="tok-str">'input_audio_buffer.speech_stopped'</span>) {
+    speechStoppedAt.current = performance.now();
+    <span class="tok-key">return</span>;
+  }
+  <span class="tok-key">const</span> isFirstAudio =
+    event.type === <span class="tok-str">'response.output_audio.delta'</span> ||
+    event.type === <span class="tok-str">'response.audio.delta'</span> ||
+    event.type === <span class="tok-str">'output_audio_buffer.started'</span>;
+  <span class="tok-key">if</span> (isFirstAudio &amp;&amp; speechStoppedAt.current != null) {
+    setTurnLatencyMs(Math.round(performance.now() - speechStoppedAt.current));
+    speechStoppedAt.current = null;
+  }
+}</code></pre>
+      <p>Call <code>trackLatency(event)</code> inside <code>dc.onmessage</code> before your reducers. Reset <code>speechStoppedAt</code> on disconnect.</p>
+    </li>
+
+    <li>
+      <p><strong>Render the readout under the phase badge.</strong> Muted helper text — a debug surface today, a perf regression guard tomorrow:</p>
+<pre><code>{turnLatencyMs != null &amp;&amp; (
+  &lt;p className=<span class="tok-str">"mt-3 text-center text-sm text-on-surface-variant"</span>&gt;
+    Last turn: {turnLatencyMs} ms
+    {turnLatencyMs &gt; 800 &amp;&amp; (
+      &lt;span className=<span class="tok-str">"text-warn"</span>&gt; — over budget&lt;/span&gt;
+    )}
+  &lt;/p&gt;
+)}</code></pre>
+      <p>800&nbsp;ms is a rule of thumb, not a SLA. Use it to spot regressions when you change config.</p>
+    </li>
+
+    <li>
+      <p><strong>Tune <code>silence_duration_ms</code> and re-measure.</strong> In <code>app/api/realtime/session/route.ts</code>, drop from 700 to <strong>500</strong> (OpenAI default):</p>
+<pre><code>silence_duration_ms: 500,</code></pre>
+      <p>Reconnect, ask three short questions, note the readout each time. Expect ~200&nbsp;ms improvement — that's pure VAD tail, not magic model speed.</p>
+      <p>If the model now cuts you off on deliberate pauses, split the difference (550–600) or bump back up. Pick the value you can explain: <em>"500&nbsp;ms silence — snappy Q&amp;A; I'll raise it if users pause mid-thought."</em></p>
+    </li>
+
+    <li>
+      <p><strong>Smoke-test the tradeoffs.</strong></p>
+      <ul>
+        <li><strong>Short question:</strong> "What's two plus two?" — latency readout under ~800&nbsp;ms feels conversational.</li>
+        <li><strong>Mid-sentence pause:</strong> "The capital of France is… Paris." — if the model responds at "is", raise <code>silence_duration_ms</code>.</li>
+        <li><strong>Noisy room (optional):</strong> if background chatter triggers false <span class="chip">listening</span>, raise <code>threshold</code> slightly instead of touching silence first.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Timer never fires? Confirm you're listening for the exact event types your model emits (<code>response.audio.delta</code> vs <code>response.output_audio.delta</code>). Readout stuck high after VAD change? Most of the gap may be model thinking — VAD only shaves the configured silence. Comparing presets? Disconnect and reconnect — session config is set at mint.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why measure speech_stopped → first audio, not speech_started → first audio?</summary>
+    <p>Users care about response time <em>after they finish talking</em>. Including their speech duration would blame them for a slow model.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Does a lower silence_duration_ms always feel better?</summary>
+    <p>No — it trades snappiness for premature turn-taking. List-heavy or reflective use cases often want 700+ ms; quick command-and-response wants 400–500.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When would you switch to semantic_vad?</summary>
+    <p>When fixed silence can't distinguish "I'm thinking" pauses from "I'm done" — e.g. open-ended storytelling. Start with server_vad until that's clearly broken.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Latency readout not updating, VAD cuts you off constantly, or numbers look fine but it still <em>feels</em> slow? Paste your event log, session config, and a few readout samples. When tuning feels defensible, tell me and we'll wire voice into the research assistant or explore semantic VAD.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0012-barge-in-turn-taking.html">← 0012: Barge-in</a></span>
+    <span><a href="../reference/realtime-latency-budget.html">Reference: latency budget</a></span>
+    <span>Next: voice in the main app (0014)</span>
+  </div>
+</div>
+</body>
+</html>

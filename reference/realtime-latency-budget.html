@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Realtime Latency Budget</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Realtime Latency Budget</h1>
+  <p class="dek">Conversational voice breaks around <strong>~500–800&nbsp;ms</strong> from end-of-speech to first model audio. Budget the stack, measure each segment, tune VAD — don't guess.</p>
+
+  <h2>The additive stack</h2>
+  <p>Unlike text (one HTTP round-trip), voice latency is <em>sum of fixed segments</em> you partially control:</p>
+<pre><code>User stops talking
+  └─ VAD tail (silence_duration_ms)     ← you configure
+  └─ speech_stopped event
+  └─ Model thinking gap                 ← show "Thinking…"
+  └─ First output audio / transcript    ← start of "Speaking…"</code></pre>
+  <p>Your <span class="chip">thinking</span> phase covers the model gap. VAD tail happens <em>before</em> that — users feel it as "why isn't it responding yet?" after they finished their sentence.</p>
+
+  <h2>Budget table</h2>
+  <table>
+    <thead>
+      <tr><th>Segment</th><th>Typical range</th><th>Who controls it</th><th>UX lever</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Connection</strong></td>
+        <td>200–800&nbsp;ms (cold)</td>
+        <td>WebRTC handshake, token mint</td>
+        <td>Keep session warm; show <span class="chip">connecting</span></td>
+      </tr>
+      <tr>
+        <td><strong>VAD tail</strong></td>
+        <td>= <code>silence_duration_ms</code></td>
+        <td>Session config</td>
+        <td>Lower for snappy; raise if model jumps in on pauses</td>
+      </tr>
+      <tr>
+        <td><strong>Thinking gap</strong></td>
+        <td>200–600&nbsp;ms+</td>
+        <td>Model + network</td>
+        <td><span class="chip">thinking</span> badge + partial user transcript</td>
+      </tr>
+      <tr>
+        <td><strong>First audio</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td>Phase → <span class="chip">speaking</span>; latency timer stops here</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>server_vad knobs</h2>
+  <table>
+    <thead>
+      <tr><th>Knob</th><th>Default</th><th>Effect</th><th>When to change</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>silence_duration_ms</code></td>
+        <td>500</td>
+        <td>Silence before <code>speech_stopped</code> — direct add to perceived wait</td>
+        <td>Feels sluggish → lower (400). Cuts you off mid-thought → raise (700–900)</td>
+      </tr>
+      <tr>
+        <td><code>threshold</code></td>
+        <td>0.5</td>
+        <td>How loud input must be to count as speech (0–1)</td>
+        <td>Noisy room / false barge-in → raise (0.7–0.85). Quiet mic → lower</td>
+      </tr>
+      <tr>
+        <td><code>prefix_padding_ms</code></td>
+        <td>300</td>
+        <td>Audio included <em>before</em> detected speech start</td>
+        <td>Clipped first syllables → raise slightly; rarely the first dial to turn</td>
+      </tr>
+      <tr>
+        <td><code>interrupt_response</code></td>
+        <td>true</td>
+        <td>Auto-cancel model when user speaks</td>
+        <td>Set <code>false</code> only for HITL / moderation — disables natural barge-in</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Measure in the probe</h2>
+<pre><code>speech_stopped  →  stamp Date.now()
+first audio delta  →  latencyMs = now - stamp</code></pre>
+  <p>Log <strong>speech_stopped → first audio</strong> — that is end-to-end turn latency the user feels. Compare before/after VAD changes. Green under ~800&nbsp;ms; investigate above.</p>
+
+  <h2>semantic_vad (alternative)</h2>
+  <p><code>type: 'semantic_vad'</code> uses the model to guess utterance completion instead of fixed silence. Tradeoff: smarter turn boundaries vs less predictable timing. Tune with <code>eagerness</code> (low / medium / high). Start with <code>server_vad</code> until silence-based detection is clearly wrong.</p>
+
+  <h2>Text parallel</h2>
+  <p>Same levers as <a href="perceived-latency.html">perceived latency</a>: acknowledge instantly (VAD detects speech), legible progress (thinking badge + transcript), strategic friction (not here — speed is the goal).</p>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0013-latency-budget-vad.html">← Lesson 0013</a></span>
+    <span><a href="realtime-lifecycle.html">Realtime lifecycle</a></span>
+    <span><a href="barge-in-turn-taking.html">Barge-in →</a></span>
+  </div>
+</div>
+</body>
+</html>

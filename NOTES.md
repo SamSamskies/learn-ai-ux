@@ -34,8 +34,10 @@
 - Lesson 0010 shipped: `/voice` probe with phase reducer, connection error mapping, `output_audio_buffer` handling for speaking→idle.
 - Audio hygiene that fixed choppy responses: client `echoCancellation` + `noiseSuppression` + `autoGainControl`; server `noise_reduction: { type: 'far_field' }`. Default for future voice builds.
 - Lesson 0011 shipped: partial transcripts — user confirmation after VAD commit, assistant stream during speaking.
-- Lesson 0012: barge-in UX — interrupted turn flag, explicit `response.cancel` button, preserve/mark pattern from text stopped.
+- Lesson 0012 shipped: barge-in UX — interrupted turn flag, explicit `response.cancel` button, preserve/mark pattern from text stopped. Phase reducer needed a fix for explicit interrupt (likely `output_audio_buffer.cleared` / `response_cancel_not_active`).
+- Lesson 0013: latency budget + VAD tuning — turn-latency readout (speech_stopped → first audio), tune `silence_duration_ms` against ~500–800 ms budget.
 
 ## Future topics (backlog)
-- **Multimodal I/O** — vision input, image and audio output (voice core shipped in lessons 0010–0012).
-- **Latency budgets for realtime** — deepen the ~500–800 ms conversational budget from the realtime lifecycle reference into a hands-on lesson.
+- **Multimodal I/O** — vision input, image and audio output.
+- **Voice in main app** — wire probe patterns into research assistant (lesson 0014 candidate).
+- **semantic_vad** — when fixed silence fails on reflective speech.
