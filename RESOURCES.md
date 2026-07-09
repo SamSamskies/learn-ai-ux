@@ -34,7 +34,7 @@
 - [vercel/ai — chat.ts source (ChatStatus)](https://github.com/vercel/ai/blob/main/packages/ai/src/ui/chat.ts)
   The source of truth for the status state machine and abort handling. Use for: when docs are ambiguous about edge cases (abort, network errors).
 
-### Voice, realtime & multimodal (Phase 3)
+### Voice, realtime & multimodal (Phase 2)
 - [OpenAI — Voice agents](https://developers.openai.com/api/docs/guides/voice-agents)
   Architecture choice: speech-to-speech (Realtime API) vs chained STT→agent→TTS. Browser path uses ephemeral client secrets + WebRTC. Use for: lesson 0010+ hands-on builds.
 - [OpenAI Realtime API — docs](https://platform.openai.com/docs/guides/realtime)

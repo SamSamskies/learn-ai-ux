@@ -29,7 +29,7 @@
 - Lesson 0009 audit completed; portfolio artifact (`docs/UX-RETROFIT.md`) skipped by choice.
 - Motivation: personal AI apps + open source contribution, not job hunting. Skip interview/demo-script framing.
 
-## Phase 3 voice & realtime arc (lesson 0010+)
+## Phase 2 voice & realtime arc (lesson 0010+)
 - Primary tool: OpenAI Realtime API (WebRTC in browser).
 - Lesson 0010 shipped: `/voice` probe with phase reducer, connection error mapping, `output_audio_buffer` handling for speaking→idle.
 - Audio hygiene that fixed choppy responses: client `echoCancellation` + `noiseSuppression` + `autoGainControl`; server `noise_reduction: { type: 'far_field' }`. Default for future voice builds.
@@ -37,10 +37,5 @@
 - Lesson 0012: barge-in UX — interrupted turn flag, explicit `response.cancel` button, preserve/mark pattern from text stopped.
 
 ## Future topics (backlog)
-- **Voice, Realtime & Multimodal** — wants to cover at some point. Text is only one surface; voice/multimodal is one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to his frontend background (hard interface problem). Concepts to hit:
-  - Speech-to-speech and realtime interaction
-  - Interruption / barge-in and turn-taking
-  - Partial transcripts and live "thinking" cues (audio + visual)
-  - Multimodal I/O — vision input, image and audio output
-  - Latency budgets for realtime (where "fast enough" is a hard requirement, not a nicety)
-  - Tools: OpenAI Realtime API (speech-to-speech, low-latency voice agents)
+- **Multimodal I/O** — vision input, image and audio output (voice core shipped in lessons 0010–0012).
+- **Latency budgets for realtime** — deepen the ~500–800 ms conversational budget from the realtime lifecycle reference into a hands-on lesson.
