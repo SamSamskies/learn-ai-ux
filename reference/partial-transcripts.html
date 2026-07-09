@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Partial Transcripts &amp; Live Cues</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Partial Transcripts &amp; Live Cues</h1>
+  <p class="dek">In voice, text deltas are the visual stream — the equivalent of token streaming on the research chat. Two channels, two timings.</p>
+
+  <h2>Two transcript streams</h2>
+  <table>
+    <thead>
+      <tr><th>Who</th><th>Event</th><th>When it arrives</th><th>UI role</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>User</strong></td>
+        <td><code>conversation.item.input_audio_transcription.delta</code><br><code>…completed</code></td>
+        <td>After VAD commits the buffer (post–speech-stop), not while the user is still talking</td>
+        <td>"What we heard" confirmation — fills the thinking gap with legible text</td>
+      </tr>
+      <tr>
+        <td><strong>Assistant</strong></td>
+        <td><code>response.output_audio_transcript.delta</code><br><code>…done</code></td>
+        <td>While model audio plays (<span class="chip">speaking</span>)</td>
+        <td>Visual stream — same job as streaming tokens in text chat</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Session config (required for user text)</h2>
+  <p>User transcription is <em>off</em> unless you enable it at session mint. Add under <code>audio.input</code>:</p>
+<pre><code>transcription: {
+  model: <span class="tok-str">'gpt-4o-mini-transcribe'</span>,
+  language: <span class="tok-str">'en'</span>,  <span class="tok-comm">// optional hint</span>
+}</code></pre>
+  <p>Without this, you only get assistant transcript deltas — user turns stay invisible.</p>
+
+  <h2>Reducer sketch</h2>
+  <p>Keep transcript state separate from phase — same split as <code>derivePhase</code> vs message parts on text chat.</p>
+<pre><code><span class="tok-key">type</span> Turn = { role: <span class="tok-str">'user'</span> | <span class="tok-str">'assistant'</span>; text: string };
+
+<span class="tok-key">type</span> TranscriptState = {
+  history: Turn[];
+  draftUser: string;
+  draftAssistant: string;
+};
+
+<span class="tok-comm">// delta → append to draft</span>
+<span class="tok-comm">// completed / done → push draft to history, clear draft</span>
+<span class="tok-comm">// response.cancelled → push partial assistant draft, then clear</span></code></pre>
+
+  <h2>UI treatments</h2>
+  <table>
+    <thead>
+      <tr><th>Phase</th><th>Transcript surface</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip">listening</span></td>
+        <td>Phase cue only (mic pulse). User deltas haven't started — don't fake live captions.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">thinking</span></td>
+        <td>User draft may stream in — "Transcribing…" then partial text. This is your thinking-gap filler.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">speaking</span></td>
+        <td>Assistant draft streams word-by-word under the phase badge.</td>
+      </tr>
+      <tr>
+        <td><span class="chip">interrupted</span></td>
+        <td>Keep partial assistant line in history (muted style). Not an error — same as text <span class="chip">stopped</span>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Audio hygiene (from LR-0012)</h2>
+  <ul>
+    <li><strong>Client:</strong> <code>getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })</code></li>
+    <li><strong>Server:</strong> <code>audio.input.noise_reduction: { type: 'far_field' }</code> on session mint</li>
+  </ul>
+  <p>Choppy or self-interrupting VAD often traces to echo feeding back into the mic — fix audio before tuning thresholds.</p>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0011-partial-transcripts.html">← Lesson 0011</a></span>
+    <span><a href="../reference/realtime-lifecycle.html">Realtime lifecycle</a></span>
+  </div>
+</div>
+</body>
+</html>

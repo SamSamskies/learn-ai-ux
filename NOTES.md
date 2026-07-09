@@ -31,7 +31,9 @@
 
 ## Phase 3 voice & realtime arc (lesson 0010+)
 - Primary tool: OpenAI Realtime API (WebRTC in browser).
-- First lesson: map text lifecycle → realtime lifecycle; ship a minimal voice probe with legible connection phases.
+- Lesson 0010 shipped: `/voice` probe with phase reducer, connection error mapping, `output_audio_buffer` handling for speaking→idle.
+- Audio hygiene that fixed choppy responses: client `echoCancellation` + `noiseSuppression` + `autoGainControl`; server `noise_reduction: { type: 'far_field' }`. Default for future voice builds.
+- Lesson 0011: partial transcripts — user confirmation after VAD commit, assistant stream during speaking.
 
 ## Future topics (backlog)
 - **Voice, Realtime & Multimodal** — wants to cover at some point. Text is only one surface; voice/multimodal is one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to his frontend background (hard interface problem). Concepts to hit:

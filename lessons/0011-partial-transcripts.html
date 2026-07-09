@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0011 · Partial Transcripts &amp; Live Cues</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 3 <span class="dot">·</span> Lesson 0011</p>
+  <h1>Partial Transcripts &amp; Live Cues</h1>
+  <p class="dek">Your phase badge tells users <em>where</em> they are. Partial transcripts tell them <em>what</em> is happening — the voice equivalent of streaming tokens. Today's win: a turn log on <code>/voice</code> with user confirmation text and a streaming assistant line.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Lesson 0010 made every phase visible. But a badge alone still leaves two silent gaps:</p>
+  <ul>
+    <li><strong>Thinking gap</strong> — user finished talking, hears nothing. Text chat shows "Thinking…"; voice can show <em>what was heard</em> as transcription deltas arrive.</li>
+    <li><strong>Speaking without sight</strong> — audio plays but users can't scan, quote, or verify. Assistant transcript deltas are your visual stream.</li>
+  </ul>
+  <p>Same design move as Phase 2: make the nondeterministic wait legible. Different transport, same trust problem.</p>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Split <span class="chip">phase</span> (lifecycle reducer) from <span class="chip">transcript</span> (text accumulator). Phase drives the status chip; transcript drives the turn log — just like <code>status</code> vs message <code>parts</code> on <code>useChat</code>.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this (8 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-transcription">OpenAI · Realtime transcription</a> — focus on "Handle transcript events" and the timing note about VAD commit. Cheat sheet: <a href="../reference/partial-transcripts.html">partial transcripts reference</a>.
+  </div>
+
+  <h2>Know this first (~5 min)</h2>
+
+  <h3>User text lags; assistant text streams</h3>
+  <table>
+    <thead>
+      <tr><th>Stream</th><th>Events</th><th>Timing trap</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>User</td>
+        <td><code>conversation.item.input_audio_transcription.delta</code> → <code>…completed</code></td>
+        <td>Deltas start <em>after</em> VAD commits — usually during <span class="chip">thinking</span>, not <span class="chip">listening</span>. Don't fake live captions while they're still talking.</td>
+      </tr>
+      <tr>
+        <td>Assistant</td>
+        <td><code>response.output_audio_transcript.delta</code> → <code>…done</code></td>
+        <td>Arrives during <span class="chip">speaking</span> — true streaming, like tokens.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Enable user transcription at mint</h3>
+  <p>User transcripts are off by default. Add <code>transcription</code> under <code>audio.input</code> in your session route — same place you already set <code>noise_reduction</code> and <code>turn_detection</code>.</p>
+
+  <h2>Build it (~20 min)</h2>
+  <p>Extend your existing <code>VoiceProbe</code> — no new route. Three files touched: session config, a transcript reducer, and the probe UI.</p>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Enable input transcription on the session.</strong> In <code>app/api/realtime/session/route.ts</code>, add under <code>audio.input</code>:</p>
+<pre><code>transcription: {
+  model: <span class="tok-str">'gpt-4o-mini-transcribe'</span>,
+  language: <span class="tok-str">'en'</span>,
+},</code></pre>
+      <p>Reconnect after this change — existing sessions won't pick it up.</p>
+    </li>
+
+    <li>
+      <p><strong>Add a transcript reducer.</strong> Create <code>lib/realtime-transcript.ts</code> — separate from <code>reduceRealtimePhase</code>:</p>
+<pre><code><span class="tok-key">export type</span> Turn = { role: <span class="tok-str">'user'</span> | <span class="tok-str">'assistant'</span>; text: string };
+
+<span class="tok-key">export type</span> TranscriptState = {
+  history: Turn[];
+  draftUser: string;
+  draftAssistant: string;
+};
+
+<span class="tok-key">export const</span> emptyTranscript: TranscriptState = {
+  history: [], draftUser: <span class="tok-str">''</span>, draftAssistant: <span class="tok-str">''</span>,
+};
+
+<span class="tok-key">export function</span> reduceTranscript(
+  state: TranscriptState,
+  event: { type: string; delta?: string; transcript?: string },
+): TranscriptState {
+  <span class="tok-key">switch</span> (event.type) {
+    <span class="tok-key">case</span> <span class="tok-str">'conversation.item.input_audio_transcription.delta'</span>:
+      <span class="tok-key">return</span> { ...state, draftUser: state.draftUser + (event.delta ?? <span class="tok-str">''</span>) };
+    <span class="tok-key">case</span> <span class="tok-str">'conversation.item.input_audio_transcription.completed'</span>: {
+      <span class="tok-key">const</span> text = event.transcript ?? state.draftUser;
+      <span class="tok-key">if</span> (!text.trim()) <span class="tok-key">return</span> { ...state, draftUser: <span class="tok-str">''</span> };
+      <span class="tok-key">return</span> {
+        history: [...state.history, { role: <span class="tok-str">'user'</span>, text }],
+        draftUser: <span class="tok-str">''</span>,
+        draftAssistant: state.draftAssistant,
+      };
+    }
+    <span class="tok-key">case</span> <span class="tok-str">'response.output_audio_transcript.delta'</span>:
+    <span class="tok-key">case</span> <span class="tok-str">'response.audio_transcript.delta'</span>:
+      <span class="tok-key">return</span> { ...state, draftAssistant: state.draftAssistant + (event.delta ?? <span class="tok-str">''</span>) };
+    <span class="tok-key">case</span> <span class="tok-str">'response.output_audio_transcript.done'</span>:
+    <span class="tok-key">case</span> <span class="tok-str">'response.audio_transcript.done'</span>: {
+      <span class="tok-key">const</span> text = state.draftAssistant;
+      <span class="tok-key">if</span> (!text.trim()) <span class="tok-key">return</span> state;
+      <span class="tok-key">return</span> {
+        history: [...state.history, { role: <span class="tok-str">'assistant'</span>, text }],
+        draftUser: state.draftUser,
+        draftAssistant: <span class="tok-str">''</span>,
+      };
+    }
+    <span class="tok-key">case</span> <span class="tok-str">'response.cancelled'</span>: {
+      <span class="tok-key">if</span> (!state.draftAssistant.trim()) <span class="tok-key">return</span> state;
+      <span class="tok-key">return</span> {
+        history: [...state.history, { role: <span class="tok-str">'assistant'</span>, text: state.draftAssistant }],
+        draftUser: state.draftUser,
+        draftAssistant: <span class="tok-str">''</span>,
+      };
+    }
+    <span class="tok-key">default</span>:
+      <span class="tok-key">return</span> state;
+  }
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Wire both reducers on the data channel.</strong> In <code>VoiceProbe</code>, add transcript state and feed every event to both reducers:</p>
+<pre><code><span class="tok-key">const</span> [transcript, setTranscript] = useState(emptyTranscript);
+
+dc.onmessage = (e) =&gt; {
+  <span class="tok-key">const</span> event = JSON.parse(e.data);
+  setPhase((p) =&gt; reduceRealtimePhase(p, event));
+  setTranscript((t) =&gt; reduceTranscript(t, event));
+};</code></pre>
+      <p>Clear transcript state on disconnect.</p>
+    </li>
+
+    <li>
+      <p><strong>Render a turn log under the phase badge.</strong> Simple layout — history first, then live drafts:</p>
+<pre><code>{transcript.history.map((turn, i) =&gt; (
+  &lt;p key={i} className={turn.role === <span class="tok-str">'user'</span> ? <span class="tok-str">'text-right'</span> : <span class="tok-str">''</span>}&gt;
+    &lt;span className=<span class="tok-str">"text-xs uppercase text-on-surface-variant"</span>&gt;{turn.role}&lt;/span&gt;
+    &lt;br /&gt;{turn.text}
+  &lt;/p&gt;
+))}
+{transcript.draftUser &amp;&amp; (
+  &lt;p className=<span class="tok-str">"text-right opacity-70"</span>&gt;
+    &lt;span className=<span class="tok-str">"text-xs"</span>&gt;you (transcribing…)&lt;/span&gt;&lt;br /&gt;{transcript.draftUser}
+  &lt;/p&gt;
+)}
+{transcript.draftAssistant &amp;&amp; (
+  &lt;p className=<span class="tok-str">"opacity-90"</span>&gt;
+    &lt;span className=<span class="tok-str">"text-xs"</span>&gt;assistant&lt;/span&gt;&lt;br /&gt;{transcript.draftAssistant}
+  &lt;/p&gt;
+)}</code></pre>
+      <p>Reuse your research-chat typography tokens. Muted style on interrupted partials is fine — same as a stopped text stream.</p>
+    </li>
+
+    <li>
+      <p><strong>Smoke-test the two streams.</strong> Connect, ask a short question, pause clearly (let VAD fire). Watch: user draft appears during thinking → finalizes → assistant draft streams during speaking. Barge-in mid-reply — partial assistant line should stay in history.</p>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>No user text at all? Session mint is missing <code>transcription</code>. User text only after you stop talking? Expected — server VAD commits first. Choppy responses returning? Confirm echo cancellation is still on from lesson 0010.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why keep phase and transcript in separate reducers?</summary>
+    <p>Same reason text chat splits SDK <code>status</code> from message content — lifecycle events and content deltas overlap but aren't 1:1. Merging them creates bugs when <code>response.done</code> fires before audio finishes.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why not show user transcript while they're still speaking?</summary>
+    <p>With server VAD, input transcription starts after buffer commit — not on every syllable. Showing fake live captions would lie about timing. Use the listening phase cue instead; user text fills the thinking gap.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What's the voice equivalent of streaming tokens?</summary>
+    <p><code>response.output_audio_transcript.delta</code> — append to a draft line while <span class="chip">speaking</span>. Users can read along with the audio.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Transcription events not firing, deltas out of order, or UI feels cluttered? Paste your event log or diff. When the turn log streams both sides, tell me and we'll tackle explicit barge-in controls in the next lesson.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0010-realtime-lifecycle-map.html">← 0010: Realtime Lifecycle Map</a></span>
+    <span><a href="../reference/partial-transcripts.html">Reference: partial transcripts</a></span>
+    <span>Next: barge-in &amp; turn-taking UX (0012)</span>
+  </div>
+</div>
+</body>
+</html>

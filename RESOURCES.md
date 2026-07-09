@@ -43,6 +43,8 @@
   Ephemeral token mint + browser peer connection flow. Use for: implementing the voice probe and connection-phase UI.
 - [openai/openai-realtime-console (GitHub)](https://github.com/openai/openai-realtime-console/)
   Lightweight reference app for WebRTC Realtime. Use for: comparing event handling when your probe behaves unexpectedly.
+- [OpenAI — Realtime transcription](https://developers.openai.com/api/docs/guides/realtime-transcription)
+  Input vs output transcript events, VAD commit timing, `audio.input.transcription` session config. Use for: lesson 0011 partial-transcript builds.
 
 ## Wisdom (Communities)
 - [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)
