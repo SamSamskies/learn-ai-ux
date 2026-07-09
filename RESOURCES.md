@@ -45,6 +45,8 @@
   Lightweight reference app for WebRTC Realtime. Use for: comparing event handling when your probe behaves unexpectedly.
 - [OpenAI — Realtime transcription](https://developers.openai.com/api/docs/guides/realtime-transcription)
   Input vs output transcript events, VAD commit timing, `audio.input.transcription` session config. Use for: lesson 0011 partial-transcript builds.
+- [OpenAI — Realtime conversations (interruption & truncation)](https://developers.openai.com/api/docs/guides/realtime-conversations#interruption-and-truncation)
+  VAD barge-in, `response.cancel` / `response.cancelled`, WebRTC auto-truncation vs WebSocket `conversation.item.truncate`. Use for: lesson 0012 barge-in UX.
 
 ## Wisdom (Communities)
 - [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Barge-in &amp; Turn-taking</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Barge-in &amp; Turn-taking</h1>
+  <p class="dek">Voice inherits the interrupted-state design rules from text — preserve partial output, mark it as user-driven, recover by continuing the conversation. Two interrupt paths; one UX treatment.</p>
+
+  <h2>Text → voice (same rules)</h2>
+  <table>
+    <thead>
+      <tr><th>Rule</th><th>Text (<span class="chip">stopped</span>)</th><th>Voice (<span class="chip">interrupted</span>)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Preserve</strong></td>
+        <td>Keep partial brief / streamed tokens</td>
+        <td>Keep partial assistant transcript; server truncates unplayed audio on WebRTC</td>
+      </tr>
+      <tr>
+        <td><strong>Mark</strong></td>
+        <td>"Stopped" badge — not an error</td>
+        <td>"Interrupted" badge on the partial turn — not an error</td>
+      </tr>
+      <tr>
+        <td><strong>Recover</strong></td>
+        <td>Regenerate in place</td>
+        <td>Keep talking — VAD hands the floor back; no reconnect needed</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Two ways to interrupt</h2>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>Trigger</th><th>Server event</th><th>When to offer</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>VAD barge-in</strong></td>
+        <td>User speaks while model is playing</td>
+        <td><code>input_audio_buffer.speech_started</code> → <code>response.cancelled</code></td>
+        <td>Default — natural conversation. Your job is to <em>show</em> it, not implement detection.</td>
+      </tr>
+      <tr>
+        <td><strong>Explicit interrupt</strong></td>
+        <td>User taps Stop / Interrupt</td>
+        <td>Client sends <code>response.cancel</code> → <code>response.cancelled</code></td>
+        <td>Noisy environments, accessibility, or when users won't talk over audio</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Phase transitions</h2>
+<pre><code>speaking
+  ├─ response.cancelled ──► interrupted
+  └─ output_audio_buffer.stopped ──► idle
+
+interrupted
+  └─ input_audio_buffer.speech_started ──► listening   <span class="tok-comm">// user takes the floor</span>
+
+listening / thinking / speaking …</code></pre>
+  <p><span class="chip">interrupted</span> is a brief beat — not a dead end. Phase badge copy should invite the next utterance ("Keep talking"), not sound like a failure.</p>
+
+  <h2>Transcript flag</h2>
+  <p>Extend turns pushed on <code>response.cancelled</code> with <code>interrupted: true</code>. Completed turns (<code>…done</code>) stay <code>interrupted: false</code>. Render interrupted lines muted + badge — same visual language as text <span class="chip">stopped</span>.</p>
+
+  <h2>Send <code>response.cancel</code> (WebRTC)</h2>
+<pre><code>dc.send(JSON.stringify({ type: <span class="tok-str">'response.cancel'</span> }));</code></pre>
+  <p>Only while <span class="chip">speaking</span>. On WebRTC the server manages output audio truncation; you don't need <code>conversation.item.truncate</code> client-side.</p>
+
+  <h2>Session knobs (already on your probe)</h2>
+  <ul>
+    <li><code>turn_detection.type: 'server_vad'</code> — automatic barge-in enabled</li>
+    <li><code>silence_duration_ms</code> — how long silence before "thinking" (700&nbsp;ms on your probe)</li>
+    <li><code>turn_detection.interrupt_response: false</code> — disable auto-cancel (HITL / moderation flows only)</li>
+  </ul>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0012-barge-in-turn-taking.html">← Lesson 0012</a></span>
+    <span><a href="../reference/partial-transcripts.html">Partial transcripts</a></span>
+    <span><a href="../reference/realtime-lifecycle.html">Realtime lifecycle</a></span>
+  </div>
+</div>
+</body>
+</html>

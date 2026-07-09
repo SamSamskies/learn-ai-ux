@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0012 · Barge-in &amp; Turn-taking UX</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 3 <span class="dot">·</span> Lesson 0012</p>
+  <h1>Barge-in &amp; Turn-taking UX</h1>
+  <p class="dek">Lesson 0002 taught preserve–mark–recover for text <span class="chip">stopped</span>. Voice barge-in is the same design move: the server cancels audio, but users still need to <em>see</em> what happened. Today's win: an explicit interrupt button plus interrupted turns marked in your turn log.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Your probe already handles VAD barge-in at the transport layer — talk over the model and <code>response.cancelled</code> fires. Lesson 0011 already preserves the partial transcript. What's missing is <strong>product UX</strong>:</p>
+  <ul>
+    <li>Interrupted lines look identical to finished ones — users can't tell a cut-off reply from a complete answer.</li>
+    <li>No tap-to-stop — in a noisy room, users won't talk over audio; they expect a button.</li>
+    <li>The phase badge says "Interrupted" globally, but the <em>turn</em> that was cut should carry the mark.</li>
+  </ul>
+  <p>Same three rules as text. Different surface.</p>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Interrupt is a <em>turn transition</em>, not an error. Two triggers (VAD speech + explicit cancel), one treatment: preserve partial text, mark the turn <span class="chip">interrupted</span>, recover by letting the user keep talking.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this (6 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-conversations#interruption-and-truncation">OpenAI · Realtime conversations — Interruption and truncation</a> — focus on the WebRTC path (server auto-truncates). Cheat sheet: <a href="../reference/barge-in-turn-taking.html">barge-in reference</a>.
+  </div>
+
+  <h2>Know this first (~5 min)</h2>
+
+  <h3>Two interrupt paths, one UI</h3>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>What happens</th><th>Your UI job</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>VAD barge-in</strong></td>
+        <td>User speaks → server cancels response → <code>response.cancelled</code></td>
+        <td>Show it — phase + transcript. Already mostly wired.</td>
+      </tr>
+      <tr>
+        <td><strong>Explicit interrupt</strong></td>
+        <td>User taps Stop → you send <code>response.cancel</code> on the data channel</td>
+        <td>Offer the button while <span class="chip">speaking</span>. Same events fire.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Phase is ephemeral; transcript is durable</h3>
+  <p><span class="chip">interrupted</span> on the phase badge is a momentary beat — it clears on the next <code>speech_started</code>. The <em>turn</em> in history needs a permanent <code>interrupted: true</code> flag so users can scroll back and see which replies were cut short.</p>
+
+  <h2>Build it (~20 min)</h2>
+  <p>Four small changes in <code>VoiceProbe</code> — reducer, transcript render, interrupt button, data-channel ref.</p>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Flag interrupted turns in the reducer.</strong> Extend <code>Turn</code> in <code>transcript-reducer.ts</code>:</p>
+<pre><code><span class="tok-key">export type</span> Turn = {
+  role: <span class="tok-str">'user'</span> | <span class="tok-str">'assistant'</span>;
+  text: string;
+  interrupted?: boolean;
+};</code></pre>
+      <p>On <code>response.cancelled</code>, push the partial assistant line with <code>interrupted: true</code>:</p>
+<pre><code><span class="tok-key">case</span> <span class="tok-str">'response.cancelled'</span>: {
+  <span class="tok-key">if</span> (!state.draftAssistant.trim()) <span class="tok-key">return</span> state;
+  <span class="tok-key">return</span> {
+    history: [
+      ...state.history,
+      { role: <span class="tok-str">'assistant'</span>, text: state.draftAssistant, interrupted: <span class="tok-key">true</span> },
+    ],
+    draftUser: state.draftUser,
+    draftAssistant: <span class="tok-str">''</span>,
+  };
+}</code></pre>
+      <p>Update the existing test — the assistant turn should include <code>interrupted: true</code>.</p>
+    </li>
+
+    <li>
+      <p><strong>Mark interrupted turns in the transcript UI.</strong> In <code>Transcript.tsx</code>, when <code>turn.interrupted</code>, render the same badge pattern as text <code>StoppedNotice</code>:</p>
+<pre><code>{turn.interrupted &amp;&amp; (
+  &lt;span className=<span class="tok-str">"mr-2 inline-flex rounded-lg border border-outline-variant bg-surface-container-low px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-on-surface-variant"</span>&gt;
+    Interrupted
+  &lt;/span&gt;
+)}
+&lt;span className={`whitespace-pre-wrap ${turn.interrupted ? <span class="tok-str">'text-foreground/60'</span> : <span class="tok-str">''</span>}`}&gt;
+  {turn.text}
+&lt;/span&gt;</code></pre>
+      <p>Muted body text + badge — preserve and mark in one glance. Not red, not an error banner.</p>
+    </li>
+
+    <li>
+      <p><strong>Keep a data-channel ref and add an interrupt button.</strong> In <code>VoiceProbe/index.tsx</code>:</p>
+<pre><code><span class="tok-key">const</span> dcRef = useRef&lt;RTCDataChannel | null&gt;(null);
+
+<span class="tok-comm">// inside connect(), after createDataChannel:</span>
+dcRef.current = dc;
+
+<span class="tok-key">function</span> interrupt() {
+  <span class="tok-key">if</span> (dcRef.current?.readyState === <span class="tok-str">'open'</span>) {
+    dcRef.current.send(JSON.stringify({ type: <span class="tok-str">'response.cancel'</span> }));
+  }
+}
+
+<span class="tok-comm">// in resetSession / disconnect:</span>
+dcRef.current = null;</code></pre>
+      <p>Show the button only while <code>phase === 'speaking'</code>, next to Disconnect:</p>
+<pre><code>{connected &amp;&amp; phase === <span class="tok-str">'speaking'</span> &amp;&amp; (
+  &lt;button type=<span class="tok-str">"button"</span> onClick={interrupt}
+    className=<span class="tok-str">"rounded-lg border border-outline-variant px-5 py-2.5 text-sm font-medium"</span>&gt;
+    Interrupt
+  &lt;/button&gt;
+)}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Smoke-test both paths.</strong></p>
+      <ul>
+        <li><strong>Talk-over:</strong> Ask a question that gets a long answer. Speak mid-reply. Phase → <span class="chip">interrupted</span> → <span class="chip">listening</span>. Turn log shows partial text + Interrupted badge.</li>
+        <li><strong>Tap interrupt:</strong> Same long answer, tap the button instead. Same events, same UI treatment.</li>
+        <li><strong>Complete reply:</strong> Short answer that finishes naturally — no badge, full-opacity text.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Button does nothing? Check <code>dcRef.readyState</code> — must be <code>open</code>. Interrupt badge on every assistant turn? You're setting <code>interrupted</code> on <code>…done</code> — only flag <code>response.cancelled</code>. Phase stuck on <span class="chip">interrupted</span>? Confirm <code>speech_started</code> still maps to <span class="chip">listening</span> in your phase reducer.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why not show interrupted turns as errors?</summary>
+    <p>Same reason text <span class="chip">stopped</span> isn't an error — the user (or their environment) chose to cut the reply. Errors are for things that failed; interrupts are normal turn-taking.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Do you need conversation.item.truncate on WebRTC?</summary>
+    <p>No — the server manages the output audio buffer and truncates unplayed audio automatically on interrupt. Truncation events are for WebSocket clients that own playback.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What's the voice equivalent of regenerate in place?</summary>
+    <p>Just keep talking. VAD opens the floor on the next utterance — no retry button needed on a conversational surface. (Chained STT→text→TTS apps might offer "repeat that" — different architecture.)</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Interrupt button not firing events, badge styling feels off, or VAD is too eager to cut the model? Paste your reducer, event log, or session config. When both interrupt paths look right, tell me and we'll tune turn-detection latency in the next lesson.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0011-partial-transcripts.html">← 0011: Partial Transcripts</a></span>
+    <span><a href="../reference/barge-in-turn-taking.html">Reference: barge-in</a></span>
+    <span>Next: latency budgets &amp; VAD tuning (0013)</span>
+  </div>
+</div>
+</body>
+</html>
