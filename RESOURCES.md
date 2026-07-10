@@ -36,7 +36,7 @@
 
 ### Voice, realtime & multimodal (Phase 2)
 - [OpenAI — Voice agents](https://developers.openai.com/api/docs/guides/voice-agents)
-  Architecture choice: speech-to-speech (Realtime API) vs chained STT→agent→TTS. Browser path uses ephemeral client secrets + WebRTC. Use for: lesson 0010+ hands-on builds.
+  Architecture choice: speech-to-speech (Realtime API) vs chained STT→agent→TTS. Browser path uses ephemeral client secrets + WebRTC. Use for: lesson 0010+ builds and lesson 0014 mode-switch (when to keep text-agent control).
 - [OpenAI Realtime API — docs](https://platform.openai.com/docs/guides/realtime)
   Speech-to-speech, low-latency voice agents over WebRTC/WebSocket. Handles audio in/out, interruption/barge-in, and turn detection server-side. Use for: the realtime interaction, barge-in/turn-taking, and latency-budget lessons.
 - [OpenAI — Realtime API with WebRTC](https://developers.openai.com/api/docs/guides/realtime-webrtc)
@@ -49,6 +49,8 @@
   VAD barge-in, `response.cancel` / `response.cancelled`, WebRTC auto-truncation vs WebSocket `conversation.item.truncate`. Use for: lesson 0012 barge-in UX.
 - [OpenAI — Realtime VAD (voice activity detection)](https://developers.openai.com/api/docs/guides/realtime-vad)
   `server_vad` vs `semantic_vad`, `silence_duration_ms`, `threshold`, `prefix_padding_ms`, `interrupt_response`. Use for: lesson 0013 latency budget & VAD tuning.
+- [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)
+  Short spoken answers, visual companion for lists/URLs, "voice for the headline, screen for the data." Use for: lesson 0014 mode-switch UX and session instructions.
 
 ## Wisdom (Communities)
 - [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)

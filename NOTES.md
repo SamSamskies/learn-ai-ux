@@ -35,9 +35,10 @@
 - Audio hygiene that fixed choppy responses: client `echoCancellation` + `noiseSuppression` + `autoGainControl`; server `noise_reduction: { type: 'far_field' }`. Default for future voice builds.
 - Lesson 0011 shipped: partial transcripts — user confirmation after VAD commit, assistant stream during speaking.
 - Lesson 0012 shipped: barge-in UX — interrupted turn flag, explicit `response.cancel` button, preserve/mark pattern from text stopped. Phase reducer needed a fix for explicit interrupt (likely `output_audio_buffer.cleared` / `response_cancel_not_active`).
-- Lesson 0013: latency budget + VAD tuning — turn-latency readout (speech_stopped → first audio), tune `silence_duration_ms` against ~500–800 ms budget.
+- Lesson 0013 shipped: turn-latency readout; `silence_duration_ms: 500` feels right for snappy Q&A (validated against budget).
+- Lesson 0014: voice in main app — mode switch (Research | Voice), shared chrome, mic entry, research-flavored session instructions. Do NOT merge Realtime into useChat.
 
 ## Future topics (backlog)
 - **Multimodal I/O** — vision input, image and audio output.
-- **Voice in main app** — wire probe patterns into research assistant (lesson 0014 candidate).
 - **semantic_vad** — when fixed silence fails on reflective speech.
+- **Voice → Research handoff** — "continue this in Research" with transcript seed (after mode switch ships).

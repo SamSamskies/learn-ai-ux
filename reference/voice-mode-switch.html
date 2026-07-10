@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Voice Mode Switch</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Voice Mode Switch</h1>
+  <p class="dek">A polished Realtime probe is not a product. Productization means <strong>one brand, two modes</strong> — and an explicit choice about what voice is for vs what stays text-native.</p>
+
+  <h2>Architecture fork (pick once)</h2>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>Best for</th><th>Cost</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Speech-to-speech</strong> (Realtime)</td>
+        <td>Natural talk, barge-in, low first-audio latency</td>
+        <td>Harder to reuse text HITL, citations, structured briefs mid-turn</td>
+      </tr>
+      <tr>
+        <td><strong>Chained</strong> (STT → text agent → TTS)</td>
+        <td>Extending an existing text agent; edit/approve before speak</td>
+        <td>Higher latency; more moving parts</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>For a research assistant with citations and confirm dialogs, keep deep research on the <em>text</em> path. Use Realtime as a <strong>sibling mode</strong> for exploratory Q&amp;A — not a drop-in replacement for <code>useChat</code>.</p>
+
+  <h2>Mode-switch checklist</h2>
+  <ol>
+    <li><strong>Shared chrome</strong> — same product name, same header language on <code>/</code> and <code>/voice</code>.</li>
+    <li><strong>Explicit mode</strong> — Research | Voice (or mic entry) so users know which contract they're in.</li>
+    <li><strong>Voice instructions</strong> — short spoken answers; defer long lists / sources to text mode.</li>
+    <li><strong>Entry + exit</strong> — mic from composer → voice; link back to research without orphaning the probe.</li>
+    <li><strong>Don't merge pipelines</strong> in v1 — two transports, one product.</li>
+  </ol>
+
+  <h2>Voice vs screen</h2>
+  <p>Voice for the headline; screen for the data. Lists, URLs, citations, and comparisons fail in audio-only memory. Instruct the voice agent to summarize and point users to Research mode for depth.</p>
+
+  <h2>Session instructions (pattern)</h2>
+<pre><code>You are the voice mode of a research assistant.
+Keep answers to 1–3 short sentences.
+If the user needs sources, lists, or a written brief,
+say so and suggest switching to Research mode.
+Never invent citations aloud.</code></pre>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0014-voice-in-main-app.html">← Lesson 0014</a></span>
+    <span><a href="realtime-lifecycle.html">Realtime lifecycle</a></span>
+    <span><a href="realtime-latency-budget.html">Latency budget →</a></span>
+  </div>
+</div>
+</body>
+</html>

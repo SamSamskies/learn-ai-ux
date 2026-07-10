@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0014 · Voice in the Main App</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0014</p>
+  <h1>Voice in the Main App</h1>
+  <p class="dek">Your probe has lifecycle, transcripts, barge-in, and a tuned 500&nbsp;ms VAD. Isolated <code>/voice</code> still feels like a lab. Today's win: one product chrome, Research | Voice modes, and session instructions that make spoken answers fit a research assistant.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Merging Realtime into the text research pipeline would throw away what you already built well — citations, edit-before-send, destructive confirms, structured briefs. Those are <em>text-native</em> trust surfaces.</p>
+  <ul>
+    <li>Speech-to-speech wins on latency and barge-in; it loses on mid-turn HITL and source lists.</li>
+    <li>Chained STT→agent→TTS reuses the text agent but adds latency you just spent four lessons shaving.</li>
+    <li>The product move for v1: <strong>sibling modes</strong>, same brand — not one Frankenstein transport.</li>
+  </ul>
+  <p>Same retrofit mindset as the text arc. Different surface, shared chrome.</p>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Productize the probe with a <strong>mode switch</strong>, not a pipeline merge. Voice = exploratory Q&amp;A. Research = briefs and sources. Instruct the voice agent to stay short and hand depth back to text.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this (6 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/voice-agents">OpenAI · Voice agents</a> — focus on the speech-to-speech vs chained table and when each wins. Companion UX: <a href="https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns">voice for the headline, screen for the data</a>. Cheat sheet: <a href="../reference/voice-mode-switch.html">voice mode switch</a>.
+  </div>
+
+  <h2>Know this first (~5 min)</h2>
+
+  <h3>Two transports, one product</h3>
+  <table>
+    <thead>
+      <tr><th>Mode</th><th>Transport</th><th>Job</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Research</strong> (<code>/</code>)</td>
+        <td><code>useChat</code> + research stream</td>
+        <td>Long-form briefs, citations, refine, stop/confirm</td>
+      </tr>
+      <tr>
+        <td><strong>Voice</strong> (<code>/voice</code>)</td>
+        <td>Realtime WebRTC</td>
+        <td>Fast spoken Q&amp;A; phase + transcript + barge-in</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Users should feel one app. Engineers keep two pipelines until a later lesson earns a handoff (e.g. "continue this in Research").</p>
+
+  <h3>What voice must not pretend to be</h3>
+  <p>Reading seven sources aloud fails. Inventing citation numbers aloud fails harder. Session <code>instructions</code> are the product contract: short answers, no fake sources, invite Research mode for depth.</p>
+
+  <h2>Build it (~20 min)</h2>
+  <p>Four small product moves — shared header, entry point, voice copy, session instructions. Leave the Realtime reducers alone.</p>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Add shared mode chrome.</strong> Extract a tiny header (or duplicate the pattern) so both pages show the same product name plus mode links:</p>
+<pre><code>&lt;header className=<span class="tok-str">"shrink-0 border-b border-outline-variant/60"</span>&gt;
+  &lt;div className=<span class="tok-str">"mx-auto flex max-w-[1120px] items-center justify-between px-6 py-4"</span>&gt;
+    &lt;span className=<span class="tok-str">"text-base font-semibold tracking-tight"</span>&gt;
+      Research Assistant
+    &lt;/span&gt;
+    &lt;nav className=<span class="tok-str">"flex items-center gap-4 text-sm"</span>&gt;
+      &lt;Link href=<span class="tok-str">"/"</span>&gt;Research&lt;/Link&gt;
+      &lt;Link href=<span class="tok-str">"/voice"</span>&gt;Voice&lt;/Link&gt;
+    &lt;/nav&gt;
+  &lt;/div&gt;
+&lt;/header&gt;</code></pre>
+      <p>Put it on the research page header (next to New chat) and wrap the voice page the same way. Active mode can be bold or underlined — keep it quiet.</p>
+    </li>
+
+    <li>
+      <p><strong>Add a mic entry from the composer.</strong> In <code>ChatComposer</code>, add an icon button that routes to <code>/voice</code> (use <code>next/link</code> or <code>router.push</code>). Tooltip: "Voice mode". Disable it while <code>busy</code> / uploading so you don't abandon an in-flight research turn by accident — or allow it and accept the tradeoff; pick one and stick to it.</p>
+      <p>This is the wake/trigger step from voice UX patterns: users shouldn't have to know <code>/voice</code> exists.</p>
+    </li>
+
+    <li>
+      <p><strong>Productize the voice surface copy.</strong> In <code>VoiceProbe</code>, drop lab language:</p>
+      <ul>
+        <li>Eyebrow: remove "Voice probe" (or replace with nothing — the shared header owns the brand).</li>
+        <li>Title: "Voice" or "Talk it through".</li>
+        <li>Dek: something like "Quick spoken answers. Switch to Research for briefs and sources."</li>
+      </ul>
+      <p>Keep phase badge, transcript, interrupt, latency readout — those are the product, not the scaffolding.</p>
+    </li>
+
+    <li>
+      <p><strong>Set research-flavored session instructions.</strong> In <code>app/api/realtime/session/route.ts</code>, add <code>instructions</code> on the session mint:</p>
+<pre><code><span class="tok-key">const</span> secret = <span class="tok-key">await</span> openai.realtime.clientSecrets.create({
+  session: {
+    type: <span class="tok-str">'realtime'</span>,
+    model: <span class="tok-str">'gpt-realtime-2.1-mini'</span>,
+    instructions: [
+      <span class="tok-str">'You are the voice mode of a research assistant.'</span>,
+      <span class="tok-str">'Keep answers to 1–3 short spoken sentences.'</span>,
+      <span class="tok-str">'If the user needs sources, lists, or a written brief,'</span>,
+      <span class="tok-str">'say so and suggest switching to Research mode.'</span>,
+      <span class="tok-str">'Never invent citations aloud.'</span>,
+    ].join(<span class="tok-str">' '</span>),
+    audio: { <span class="tok-com">/* unchanged — keep silence_duration_ms: 500 */</span> },
+  },
+});</code></pre>
+      <p>Reconnect after changing mint config. Ask for a long list out loud — the model should refuse to dump it and point you back to Research.</p>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Don't wire Realtime events into <code>useChat</code> this lesson — that's a different architecture (chained or tool-handoff), not a mode switch. Shared header flashing on navigation? Prefer a small shared component over copy-paste drift. Mic button while streaming research? Prefer disabled — abandoning mid-brief feels broken.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why not replace ResearchChat with Realtime speech-to-speech?</summary>
+    <p>Citations, refine-before-send, and structured briefs need durable text and HITL. S2S optimizes for conversational latency, not source-backed research artifacts.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When would chained STT→text→TTS be the better product choice?</summary>
+    <p>When you must reuse the existing research agent unchanged — edit transcript, run tools, approve, then speak. You pay latency for control.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What does "voice for the headline, screen for the data" mean here?</summary>
+    <p>Speak a short summary; put lists, URLs, and citations on the Research surface. Session instructions enforce that split.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Unsure whether to share one header component vs duplicate, or want a later handoff ("continue in Research")? Paste your approach. When Research ↔ Voice feels like one product, tell me and we'll pick multimodal vision or semantic VAD next.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0013-latency-budget-vad.html">← 0013: Latency &amp; VAD</a></span>
+    <span><a href="../reference/voice-mode-switch.html">Reference: mode switch</a></span>
+    <span>Next: multimodal or semantic VAD (0015)</span>
+  </div>
+</div>
+</body>
+</html>
