@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0015 · Voice → Research Handoff</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0015</p>
+  <h1>Voice → Research Handoff</h1>
+  <p class="dek">Your confirm dialog makes mode-switch data loss honest. Today's win: “Continue in Research” ends the live voice session but carries its useful context into the Research composer as an editable draft.</p>
+
+  <h2>Why this, why now</h2>
+  <p>A warning protects users from accidental loss. A handoff helps them finish the job. The product should not preserve every implementation detail across modes; it should preserve <em>intent</em>.</p>
+  <ul>
+    <li><strong>Destroy:</strong> peer connection, microphone stream, Realtime phase, partial assistant audio.</li>
+    <li><strong>Carry:</strong> completed transcript turns plus a pending user utterance.</li>
+    <li><strong>Require review:</strong> seed the composer; never auto-send on arrival.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>A handoff is a <strong>lossy state boundary</strong>, not state synchronization. Translate the minimum useful context into the destination mode's native input.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — revisit this section (4 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/voice-agents">OpenAI · Voice agents</a> — compare speech-to-speech with chained architecture. We are keeping the low-latency speech path and adding an explicit exit to the text path, not rebuilding a chain. Implementation companion: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage">MDN · sessionStorage</a>. Cheat sheet: <a href="../reference/voice-mode-switch.html">voice mode switch</a>.
+  </div>
+
+  <h2>Know this first (~4 min)</h2>
+
+  <h3>Why a one-shot buffer?</h3>
+  <p>The routes are sibling pages, so page-local React state disappears on navigation. A small <code>sessionStorage</code> entry survives that navigation, stays scoped to the current tab, and can be deleted after one read.</p>
+  <p>Do not put the transcript in the URL: it leaks conversation text into history, is awkward to encode, and can grow beyond practical URL lengths.</p>
+
+  <h3>The destination owns the final action</h3>
+  <p>Voice produces context; Research accepts a draft. The user can edit, refine, or discard it before <code>useChat</code> sees anything. This reuses your edit-before-send HITL pattern.</p>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Create a one-shot handoff helper.</strong> Add <code>lib/voice-handoff.ts</code>. Keep only the last six turns so a casual voice session cannot silently become a giant research prompt. Include a pending user utterance, but exclude <code>draftAssistant</code>: incomplete model output is poor handoff context.</p>
+<pre><code><span class="tok-key">const</span> HANDOFF_KEY = <span class="tok-str">"voiceResearchHandoff"</span>;
+
+<span class="tok-key">type</span> VoiceTurn = {
+  role: <span class="tok-str">"user"</span> | <span class="tok-str">"assistant"</span>;
+  text: string;
+  interrupted?: boolean;
+};
+
+<span class="tok-key">type</span> VoiceHandoffSource = {
+  history: VoiceTurn[];
+  draftUser: string;
+};
+
+<span class="tok-key">export function</span> formatVoiceHandoff(
+  source: VoiceHandoffSource,
+): string | null {
+  <span class="tok-key">const</span> pendingUser = source.draftUser.trim()
+    ? [{ role: <span class="tok-str">"user"</span> <span class="tok-key">as const</span>, text: source.draftUser }]
+    : [];
+  <span class="tok-key">const</span> turns = [...source.history, ...pendingUser].slice(-6);
+  <span class="tok-key">if</span> (turns.length === 0) <span class="tok-key">return</span> null;
+
+  <span class="tok-key">const</span> transcript = turns.map((turn) =&gt; {
+    <span class="tok-key">const</span> interrupted = turn.interrupted ? <span class="tok-str">" [interrupted]"</span> : <span class="tok-str">""</span>;
+    <span class="tok-key">return</span> <span class="tok-str">`${turn.role === "user" ? "User" : "Assistant"}${interrupted}: ${turn.text.trim()}`</span>;
+  });
+
+  <span class="tok-key">return</span> [
+    <span class="tok-str">"Continue this as a source-backed research task."</span>,
+    <span class="tok-str">"Use this voice transcript as context:"</span>,
+    <span class="tok-str">""</span>,
+    ...transcript,
+  ].join(<span class="tok-str">"\n"</span>);
+}
+
+<span class="tok-key">export function</span> saveVoiceHandoff(draft: string) {
+  sessionStorage.setItem(HANDOFF_KEY, draft);
+}
+
+<span class="tok-key">export function</span> takeVoiceHandoff(): string | null {
+  <span class="tok-key">const</span> draft = sessionStorage.getItem(HANDOFF_KEY);
+  sessionStorage.removeItem(HANDOFF_KEY);
+  <span class="tok-key">return</span> draft;
+}</code></pre>
+      <p>Optional durability check: add <code>lib/voice-handoff.test.ts</code> for empty input, pending user text, interruption labels, and the six-turn cap. Keep storage functions out of the unit test unless you configure a DOM environment.</p>
+    </li>
+
+    <li>
+      <p><strong>Translate voice state before navigating.</strong> In <code>components/VoiceProbe/index.tsx</code>, import the helper and add one exit function:</p>
+<pre><code><span class="tok-key">function</span> continueInResearch() {
+  <span class="tok-key">const</span> draft = formatVoiceHandoff(transcript);
+  <span class="tok-key">if</span> (draft) saveVoiceHandoff(draft);
+  disconnect();
+  router.push(<span class="tok-str">"/"</span>);
+}</code></pre>
+      <p>Add a <strong>Continue in Research</strong> button when there is transcript text. Wire the existing switch confirmation to the same function, then change its copy:</p>
+<pre><code>description={
+  formatVoiceHandoff(transcript)
+    ? <span class="tok-str">"This ends voice. We'll copy the conversation into Research as an editable draft."</span>
+    : <span class="tok-str">"This ends your voice session."</span>
+}
+
+onConfirm={() =&gt; {
+  setPendingModeHref(null);
+  continueInResearch();
+}}</code></pre>
+      <p>The confirm remains meaningful: the live session still ends. What changed is the recovery path, so “clears the transcript” is no longer accurate.</p>
+    </li>
+
+    <li>
+      <p><strong>Consume the draft in Research.</strong> In <code>components/ResearchChat/index.tsx</code>, read the buffer once after mount. Seed <code>input</code>; do not call <code>send()</code> or <code>newChat()</code>.</p>
+<pre><code>useEffect(() =&gt; {
+  <span class="tok-key">const</span> draft = takeVoiceHandoff();
+  <span class="tok-key">if</span> (!draft) <span class="tok-key">return</span>;
+
+  setInput(draft);
+  setRefined(false);
+  draftBeforeRefineRef.current = null;
+
+  requestAnimationFrame(() =&gt; {
+    <span class="tok-key">const</span> el = textareaRef.current;
+    <span class="tok-key">if</span> (el) {
+      el.style.height = <span class="tok-str">"auto"</span>;
+      el.style.height = <span class="tok-str">`${Math.min(el.scrollHeight, 200)}px`</span>;
+      el.focus();
+    }
+  });
+}, []);</code></pre>
+      <p>Because <code>takeVoiceHandoff()</code> deletes the key, refresh should not resurrect an already-consumed transcript. Verify this in development too, where React checks effect remount behavior.</p>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Do not promise that all page state survives. This handoff intentionally saves only voice context for the next task; it does not preserve the WebRTC connection or restore a previous Research timeline. Keep the UI copy precise.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why seed the composer instead of auto-sending?</summary>
+    <p>Navigation should not trigger an expensive, nondeterministic action without review. An editable draft preserves user agency and composes with Refine and Undo.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why carry a transcript instead of the Realtime session?</summary>
+    <p>The destination needs intent, not transport state. Research has its own pipeline for durable text, sources, and citations.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What proves the buffer is truly one-shot?</summary>
+    <p>Complete a handoff, then refresh Research. The draft should not reappear because the storage key was removed when consumed.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> If Strict Mode eats the draft, the textarea does not resize, or you are unsure whether an interrupted turn belongs in the seed, show me the behavior. When the handoff works, tell me what context you chose to carry and why.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0014-voice-in-main-app.html">← 0014: Voice in the app</a></span>
+    <span><a href="../reference/voice-mode-switch.html">Reference: mode switch</a></span>
+    <span>Next: multimodal input or semantic VAD</span>
+  </div>
+</div>
+</body>
+</html>

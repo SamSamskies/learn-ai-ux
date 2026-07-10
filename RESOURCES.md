@@ -51,6 +51,8 @@
   `server_vad` vs `semantic_vad`, `silence_duration_ms`, `threshold`, `prefix_padding_ms`, `interrupt_response`. Use for: lesson 0013 latency budget & VAD tuning.
 - [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)
   Short spoken answers, visual companion for lists/URLs, "voice for the headline, screen for the data." Use for: lesson 0014 mode-switch UX and session instructions.
+- [MDN — Window: sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)
+  Per-tab storage scoped to the page session and origin. Use for: a small, one-shot handoff buffer between sibling Research and Voice routes without putting transcript text in the URL.
 
 ## Wisdom (Communities)
 - [r/UXDesign](https://reddit.com/r/UXDesign) and [r/UI_Design](https://reddit.com/r/UI_Design)

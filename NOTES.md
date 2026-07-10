@@ -36,9 +36,9 @@
 - Lesson 0011 shipped: partial transcripts — user confirmation after VAD commit, assistant stream during speaking.
 - Lesson 0012 shipped: barge-in UX — interrupted turn flag, explicit `response.cancel` button, preserve/mark pattern from text stopped. Phase reducer needed a fix for explicit interrupt (likely `output_audio_buffer.cleared` / `response_cancel_not_active`).
 - Lesson 0013 shipped: turn-latency readout; `silence_duration_ms: 500` feels right for snappy Q&A (validated against budget).
-- Lesson 0014: voice in main app — mode switch (Research | Voice), shared chrome, mic entry, research-flavored session instructions. Do NOT merge Realtime into useChat.
+- Lesson 0014 shipped: voice in main app — mode switch (Research | Voice), shared chrome, mic entry, research-flavored session instructions. Switching after work begins now requires confirmation because route-local chat state is destroyed. Do NOT merge Realtime into useChat.
+- Lesson 0015: Voice → Research handoff — carry recent transcript context through a one-shot same-tab buffer and seed the Research composer for review; still tear down Realtime intentionally.
 
 ## Future topics (backlog)
 - **Multimodal I/O** — vision input, image and audio output.
 - **semantic_vad** — when fixed silence fails on reflective speech.
-- **Voice → Research handoff** — "continue this in Research" with transcript seed (after mode switch ships).

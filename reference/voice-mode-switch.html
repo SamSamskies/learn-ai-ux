@@ -37,9 +37,25 @@
     <li><strong>Shared chrome</strong> — same product name, same header language on <code>/</code> and <code>/voice</code>.</li>
     <li><strong>Explicit mode</strong> — Research | Voice (or mic entry) so users know which contract they're in.</li>
     <li><strong>Voice instructions</strong> — short spoken answers; defer long lists / sources to text mode.</li>
-    <li><strong>Entry + exit</strong> — mic from composer → voice; link back to research without orphaning the probe.</li>
+    <li><strong>Guard destructive exits</strong> — confirm before route-local work disappears.</li>
+    <li><strong>Carry intent</strong> — voice transcript → editable Research draft; never auto-send.</li>
     <li><strong>Don't merge pipelines</strong> in v1 — two transports, one product.</li>
   </ol>
+
+  <h2>Handoff boundary</h2>
+  <table>
+    <thead>
+      <tr><th>Destroy</th><th>Carry</th><th>Review</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Peer connection, microphone, Realtime phase, incomplete assistant audio</td>
+        <td>Recent completed turns and a pending user utterance</td>
+        <td>Seed the Research composer so the user can edit, refine, send, or discard</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Use a one-shot, same-tab buffer such as <code>sessionStorage</code> when sibling routes do not share React state. Keep conversation text out of query parameters and remove the buffer after the destination consumes it.</p>
 
   <h2>Voice vs screen</h2>
   <p>Voice for the headline; screen for the data. Lists, URLs, citations, and comparisons fail in audio-only memory. Instruct the voice agent to summarize and point users to Research mode for depth.</p>
@@ -54,7 +70,7 @@ Never invent citations aloud.</code></pre>
   <div class="lesson-nav">
     <span><a href="../lessons/0014-voice-in-main-app.html">← Lesson 0014</a></span>
     <span><a href="realtime-lifecycle.html">Realtime lifecycle</a></span>
-    <span><a href="realtime-latency-budget.html">Latency budget →</a></span>
+    <span><a href="../lessons/0015-voice-to-research-handoff.html">Lesson 0015 →</a></span>
   </div>
 </div>
 </body>
