@@ -48,7 +48,7 @@
 - [OpenAI — Realtime conversations (interruption & truncation)](https://developers.openai.com/api/docs/guides/realtime-conversations#interruption-and-truncation)
   VAD barge-in, `response.cancel` / `response.cancelled`, WebRTC auto-truncation vs WebSocket `conversation.item.truncate`. Use for: lesson 0012 barge-in UX.
 - [OpenAI — Realtime VAD (voice activity detection)](https://developers.openai.com/api/docs/guides/realtime-vad)
-  `server_vad` vs `semantic_vad`, `silence_duration_ms`, `threshold`, `prefix_padding_ms`, `interrupt_response`. Use for: lesson 0013 latency budget & VAD tuning.
+  `server_vad` vs `semantic_vad`, `silence_duration_ms`, `threshold`, `prefix_padding_ms`, `eagerness`, `interrupt_response`. Use for: lesson 0013 latency budget & VAD tuning; lesson 0016 semantic turn boundaries.
 - [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)
   Short spoken answers, visual companion for lists/URLs, "voice for the headline, screen for the data." Use for: lesson 0014 mode-switch UX and session instructions.
 - [MDN — Window: sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)

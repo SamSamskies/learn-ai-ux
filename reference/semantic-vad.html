@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Semantic VAD</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Semantic VAD</h1>
+  <p class="dek">When fixed silence can't tell "I'm thinking" from "I'm done," use a semantic classifier to chunk turns. Trade predictable latency for smarter boundaries.</p>
+
+  <h2>Two VAD modes</h2>
+  <table>
+    <thead>
+      <tr><th>Mode</th><th>Detects end-of-turn by…</th><th>Best for</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>server_vad</code></td>
+        <td>Configured silence (<code>silence_duration_ms</code>)</td>
+        <td>Snappy Q&amp;A, commands, predictable latency budgets</td>
+      </tr>
+      <tr>
+        <td><code>semantic_vad</code></td>
+        <td>Model scores whether the utterance sounds complete</td>
+        <td>Reflective speech, mid-thought pauses, trailing "umm…"</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Default is <code>server_vad</code>. Switch only when silence tuning clearly fails — not as a first dial.</p>
+
+  <h2>semantic_vad config</h2>
+<pre><code>turn_detection: {
+  type: 'semantic_vad',
+  eagerness: 'low',   // optional: low | medium | high | auto
+  interrupt_response: true,
+}</code></pre>
+
+  <h2>eagerness knob</h2>
+  <table>
+    <thead>
+      <tr><th>Value</th><th>Behavior</th><th>When to use</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>high</code></td>
+        <td>Chunk as soon as possible — closer to snappy server_vad</td>
+        <td>Commands, rapid back-and-forth</td>
+      </tr>
+      <tr>
+        <td><code>medium</code> / <code>auto</code></td>
+        <td>Default balance</td>
+        <td>General conversation</td>
+      </tr>
+      <tr>
+        <td><code>low</code></td>
+        <td>Wait longer; tolerate thinking pauses and trailing fillers</td>
+        <td>Research Q&amp;A, open-ended questions, storytelling</td>
+      </tr>
+    </tbody>
+  </table>
+  <p><code>auto</code> is equivalent to <code>medium</code>.</p>
+
+  <h2>Symptom → dial</h2>
+  <table>
+    <thead>
+      <tr><th>Symptom</th><th>On server_vad</th><th>On semantic_vad</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Model jumps in at "The capital of France is…"</td>
+        <td>Raise <code>silence_duration_ms</code> — but then all turns feel sluggish</td>
+        <td>Switch to <code>semantic_vad</code>; try <code>eagerness: 'low'</code></td>
+      </tr>
+      <tr>
+        <td>User trails off with "umm…" and gets cut off</td>
+        <td>Hard to fix with silence alone</td>
+        <td><code>semantic_vad</code> extends timeout when completion score is low</td>
+      </tr>
+      <tr>
+        <td>Feels sluggish after short factual questions</td>
+        <td>Lower <code>silence_duration_ms</code></td>
+        <td>Raise <code>eagerness</code> to <code>medium</code> or <code>high</code></td>
+      </tr>
+      <tr>
+        <td>Latency readout varies turn-to-turn</td>
+        <td>Expected — VAD tail is fixed</td>
+        <td>Also expected — semantic wait is content-dependent; budget by feel, not one number</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Product legibility</h2>
+  <p>Surface the active mode in the voice UI ("Turn detection: semantic, low eagerness"). Users can't see VAD config — a label explains why some pauses feel longer and sets expectations after a mode change.</p>
+
+  <h2>Decision rule</h2>
+  <ol>
+    <li>Start with <code>server_vad</code> + measured <code>silence_duration_ms</code>.</li>
+    <li>If raising silence fixes mid-thought cutoffs but breaks snappy Q&amp;A, try <code>semantic_vad</code>.</li>
+    <li>Tune <code>eagerness</code> before reverting — don't bounce between modes without a smoke test.</li>
+    <li>Reconnect after session config changes — values are set at mint.</li>
+  </ol>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0016-semantic-vad-turn-boundaries.html">← Lesson 0016</a></span>
+    <span><a href="realtime-latency-budget.html">Latency budget</a></span>
+    <span><a href="barge-in-turn-taking.html">Barge-in →</a></span>
+  </div>
+</div>
+</body>
+</html>

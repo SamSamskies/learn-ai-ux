@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0016 · Semantic VAD &amp; Turn Boundaries</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0016</p>
+  <h1>Semantic VAD &amp; Turn Boundaries</h1>
+  <p class="dek">You tuned <code>silence_duration_ms</code> to 500&nbsp;ms for snappy Q&amp;A. That same knob makes the model jump in when someone pauses mid-thought. Today's win: switch to <code>semantic_vad</code>, pick an <code>eagerness</code> that fits research-style speech, and surface the mode so users know why pauses behave differently.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Lesson 0013 gave you a latency readout and a defended silence value. Lesson 0015 closed the mode-switch arc. The remaining voice friction is often <strong>turn boundaries</strong> — when the session decides you're done talking.</p>
+  <ul>
+    <li><code>server_vad</code> adds a fixed silence tail — great for commands, brittle for reflective answers.</li>
+    <li>Raising silence fixes mid-thought cutoffs but makes every short question feel sluggish.</li>
+    <li><code>semantic_vad</code> trades predictable timing for smarter boundaries — the right tool for exploratory research Q&amp;A.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Turn detection is a <strong>product knob</strong>, not a one-time default. Pick the mode that matches how users actually speak in this surface — and make the choice legible in the UI.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this (5 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-vad">OpenAI · Voice activity detection (VAD)</a> — focus on the <strong>Semantic VAD</strong> section and the <code>eagerness</code> table. Cheat sheet: <a href="../reference/semantic-vad.html">semantic VAD reference</a>.
+  </div>
+
+  <h2>Know this first (~4 min)</h2>
+
+  <h3>What semantic VAD does differently</h3>
+  <p>Instead of counting milliseconds of silence, the API scores whether your words sound like a complete utterance. A definitive statement gets a short wait; a trailing "umm…" gets a longer one. Same events — <code>speech_started</code> / <code>speech_stopped</code> — but different timing logic behind them.</p>
+
+  <h3>The tradeoff you accept</h3>
+  <table>
+    <thead>
+      <tr><th></th><th><code>server_vad</code></th><th><code>semantic_vad</code></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Latency predictability</strong></td>
+        <td>Fixed tail ≈ <code>silence_duration_ms</code></td>
+        <td>Content-dependent — readout will vary turn-to-turn</td>
+      </tr>
+      <tr>
+        <td><strong>Mid-thought pauses</strong></td>
+        <td>Often cuts off unless silence is high</td>
+        <td>Usually waits through "…is" before "Paris"</td>
+      </tr>
+      <tr>
+        <td><strong>Tuning dial</strong></td>
+        <td><code>silence_duration_ms</code>, <code>threshold</code></td>
+        <td><code>eagerness</code> (low / medium / high)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>For a research assistant voice mode — open questions, thinking aloud — start at <code>eagerness: 'low'</code>.</p>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Centralize turn-detection config.</strong> Add <code>lib/realtime-turn-detection.ts</code> so session mint and UI share one source of truth:</p>
+<pre><code><span class="tok-key">export const</span> REALTIME_TURN_DETECTION = {
+  type: <span class="tok-str">'semantic_vad'</span> <span class="tok-key">as const</span>,
+  eagerness: <span class="tok-str">'low'</span> <span class="tok-key">as const</span>,
+  interrupt_response: <span class="tok-key">true</span>,
+};
+
+<span class="tok-key">export function</span> turnDetectionLabel(): string {
+  <span class="tok-key">const</span> { type, eagerness } = REALTIME_TURN_DETECTION;
+  <span class="tok-key">if</span> (type === <span class="tok-str">'semantic_vad'</span>) {
+    <span class="tok-key">return</span> <span class="tok-str">`Turn detection: semantic (${eagerness} eagerness)`</span>;
+  }
+  <span class="tok-key">return</span> <span class="tok-str">'Turn detection: server VAD'</span>;
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Swap VAD mode in the session route.</strong> In <code>app/api/realtime/session/route.ts</code>, import the constant and replace the <code>server_vad</code> block:</p>
+<pre><code><span class="tok-key">import</span> { REALTIME_TURN_DETECTION } <span class="tok-key">from</span> <span class="tok-str">'@/lib/realtime-turn-detection'</span>;
+
+<span class="tok-cmt">// inside audio.input:</span>
+turn_detection: REALTIME_TURN_DETECTION,</code></pre>
+      <p>Remove <code>threshold</code>, <code>prefix_padding_ms</code>, and <code>silence_duration_ms</code> — they apply only to <code>server_vad</code>. Disconnect and reconnect to pick up the new session.</p>
+    </li>
+
+    <li>
+      <p><strong>Surface the mode in VoiceProbe.</strong> Import <code>turnDetectionLabel</code> and render it under your latency readout — muted helper text, same tier as "Last turn: 612 ms":</p>
+<pre><code>&lt;p className=<span class="tok-str">"mt-2 text-center text-xs text-on-surface-variant"</span>&gt;
+  {turnDetectionLabel()}
+&lt;/p&gt;</code></pre>
+      <p>This is a trust signal for voice: users learn why a pause didn't trigger a reply yet, or why latency isn't fixed, without seeing raw config.</p>
+    </li>
+
+    <li>
+      <p><strong>Run the two smoke tests from lesson 0013 — compare outcomes.</strong></p>
+      <ul>
+        <li><strong>Mid-sentence pause:</strong> "The capital of France is… Paris." — with <code>server_vad</code> at 500&nbsp;ms this often triggered at "is". Semantic + low eagerness should wait for "Paris".</li>
+        <li><strong>Short factual:</strong> "What's two plus two?" — should still feel conversational. If sluggish, try <code>eagerness: 'medium'</code> and reconnect.</li>
+        <li><strong>Trailing filler (bonus):</strong> "I think the answer is umm… four." — semantic VAD should tolerate the filler better than fixed silence.</li>
+      </ul>
+      <p>Note latency numbers in a scratch comment or your own notes — expect more variance than with server_vad. That's the tradeoff, not a regression.</p>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Don't flip modes without reconnecting — session config is set at mint. Don't chase identical latency readouts on semantic_vad; judge by cut-off behavior and conversational feel. If both modes feel wrong, check mic hygiene (echo cancellation, noise reduction) before tuning further.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why not just raise silence_duration_ms to 900 ms?</summary>
+    <p>It fixes mid-thought pauses but adds ~400 ms to every short question — the snappy Q&amp;A you validated in lesson 0013. Semantic VAD targets the pause problem without penalizing every turn.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When would you switch back to server_vad?</summary>
+    <p>Command-and-response surfaces where predictable sub-500 ms tails matter more than reflective speech — e.g. a voice calculator or fast tool invocations.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What does surfacing turn detection buy the product?</summary>
+    <p>Legibility. Users can't see session JSON — a label explains behavior changes after config updates and reduces "is it broken?" reports when pauses feel longer.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Still getting cut off mid-thought, latency feels wildly inconsistent, or you're unsure which eagerness fits your use case? Tell me what you said and when the model jumped in. When the smoke tests pass, note which eagerness you picked and why.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0015-voice-to-research-handoff.html">← 0015: Voice handoff</a></span>
+    <span><a href="../reference/semantic-vad.html">Reference: semantic VAD</a></span>
+    <span>Next: multimodal input</span>
+  </div>
+</div>
+</body>
+</html>

@@ -93,7 +93,7 @@ first audio delta  →  latencyMs = now - stamp</code></pre>
   <p>Log <strong>speech_stopped → first audio</strong> — that is end-to-end turn latency the user feels. Compare before/after VAD changes. Green under ~800&nbsp;ms; investigate above.</p>
 
   <h2>semantic_vad (alternative)</h2>
-  <p><code>type: 'semantic_vad'</code> uses the model to guess utterance completion instead of fixed silence. Tradeoff: smarter turn boundaries vs less predictable timing. Tune with <code>eagerness</code> (low / medium / high). Start with <code>server_vad</code> until silence-based detection is clearly wrong.</p>
+  <p><code>type: 'semantic_vad'</code> uses the model to guess utterance completion instead of fixed silence. Tradeoff: smarter turn boundaries vs less predictable timing. Tune with <code>eagerness</code> (low / medium / high). Start with <code>server_vad</code> until silence-based detection is clearly wrong. Full cheat sheet: <a href="semantic-vad.html">semantic VAD reference</a>.</p>
 
   <h2>Text parallel</h2>
   <p>Same levers as <a href="perceived-latency.html">perceived latency</a>: acknowledge instantly (VAD detects speech), legible progress (thinking badge + transcript), strategic friction (not here — speed is the goal).</p>
