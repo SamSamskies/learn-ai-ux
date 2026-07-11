@@ -41,7 +41,9 @@
 - Lesson 0016 shipped: Semantic VAD config + legible turn-detection label. Learner found no win over server_vad at 500 ms — revert default to server_vad; keep centralized config file.
 - Lesson 0017 shipped: Voice + image context — attach resized JPEG via `conversation.item.create`, thumbnail in UI, ask aloud; handoff stays text-only for v1. Voice page layout refactored so session dock / attach strip no longer crowd the center transcript.
 - Lesson 0016 semantic VAD finding captured in LR-0018 — default stays server_vad at 500 ms.
+- Lesson 0018 shipped: `lookup_definition` Realtime tool — auto-run with "Looking up…" label + transcript system line. Tool loop pattern established (LR-0020).
+- Lesson 0019 next: voice tool approval — gate `stage_research_brief` before writing handoff; lookup stays auto-run.
 
 ## Future topics (backlog)
-- **Voice tool approval** — HITL before side-effecting tools (beyond read-only lookup).
 - **Multimodal output** — image/audio generation in product surfaces.
+- **Voice arc wrap-up** — audit voice surface against mission checklist.

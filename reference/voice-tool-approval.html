@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Voice Tool Approval</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Voice Tool Approval</h1>
+  <p class="dek">Gate side-effecting Realtime tools before execution — the model proposes, the user approves or rejects, then the session resumes with <code>function_call_output</code>.</p>
+
+  <h2>When to auto-run vs gate</h2>
+  <table>
+    <thead>
+      <tr><th>Risk</th><th>Voice tool examples</th><th>Client behavior</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Low — auto-run</strong></td>
+        <td>Definition lookup, read-only fetch</td>
+        <td>Execute immediately; label the pause ("Looking up…")</td>
+      </tr>
+      <tr>
+        <td><strong>Medium — approve once</strong></td>
+        <td>Stage Research draft, pin a note, send on user's behalf</td>
+        <td>Hold <code>function_call</code>; show confirm UI with args; execute only on approve</td>
+      </tr>
+      <tr>
+        <td><strong>High — strong confirm</strong></td>
+        <td>Delete data, purchase, share PII</td>
+        <td>Modal with explicit consequence; default Cancel; consider blocking voice path entirely</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Match friction to <strong>harm × scope × reversibility</strong> — same rule as text-surface HITL. Voice adds a constraint: the user may not be looking at the screen. Name the action in plain language and show the proposed args.</p>
+
+  <h2>Approval loop (client)</h2>
+  <ol>
+    <li><code>response.done</code> with <code>function_call</code> for a gated tool.</li>
+    <li>Parse <code>name</code>, <code>arguments</code>, <code>call_id</code>. Do <em>not</em> execute yet.</li>
+    <li>Set dock label: "Waiting for your approval…" (or tool-specific copy).</li>
+    <li>Show confirm UI — surface the parsed args (e.g. the research query).</li>
+    <li><strong>Approve:</strong> run side effect → send <code>function_call_output</code> with success payload → <code>response.create</code>.</li>
+    <li><strong>Reject:</strong> send <code>function_call_output</code> with <code>{ rejected: true }</code> → <code>response.create</code> so the model can respond aloud.</li>
+  </ol>
+
+  <h2>Reject payload (model continues)</h2>
+<pre><code>dc.send(JSON.stringify({
+  type: "conversation.item.create",
+  item: {
+    type: "function_call_output",
+    call_id: callId,
+    output: JSON.stringify({ rejected: true, reason: "user_declined" }),
+  },
+}));
+dc.send(JSON.stringify({ type: "response.create" }));</code></pre>
+  <p>Without <code>response.create</code>, the session stalls after rejection. The model should acknowledge the decline in speech — tune instructions accordingly.</p>
+
+  <h2>UX patterns</h2>
+  <table>
+    <thead>
+      <tr><th>Gap</th><th>Why it hurts</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Silent hold</strong></td>
+        <td>User hears nothing while approval UI waits</td>
+        <td>Dock label + visible dialog; optional system line in transcript</td>
+      </tr>
+      <tr>
+        <td><strong>Hidden args</strong></td>
+        <td>User approves blind</td>
+        <td>Show the parsed query/topic in the dialog body</td>
+      </tr>
+      <tr>
+        <td><strong>Stale approval</strong></td>
+        <td>User disconnects or barge-in during hold</td>
+        <td>Clear pending state; auto-reject or drop stale <code>response.create</code></td>
+      </tr>
+      <tr>
+        <td><strong>Everything gated</strong></td>
+        <td>Prompt fatigue on harmless lookups</td>
+        <td>Split tools: auto-run read-only, gate side effects only</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Symptom → fix</h2>
+  <table>
+    <thead>
+      <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Dialog never appears</td>
+        <td>Tool routed to auto-run handler</td>
+        <td>Branch on <code>call.name</code> before executing</td>
+      </tr>
+      <tr>
+        <td>Approve but model silent</td>
+        <td>Missing <code>response.create</code></td>
+        <td>Send output item + <code>response.create</code> on both approve and reject</td>
+      </tr>
+      <tr>
+        <td>Model keeps re-proposing after reject</td>
+        <td>Instructions too pushy</td>
+        <td>"If rejected, acknowledge and offer an alternative — do not retry the tool."</td>
+      </tr>
+      <tr>
+        <td>Double staging</td>
+        <td>Same <code>call_id</code> handled twice</td>
+        <td>Track processed ids; clear pending on resolve</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary sources</span>
+    <a href="https://developers.openai.com/api/docs/guides/agents/guardrails-approvals">OpenAI · Guardrails and human review</a> ·
+    <a href="https://www.shapeof.ai/patterns/verification">Shape of AI · Verification</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0019-voice-tool-approval.html">← Lesson 0019</a></span>
+    <span><a href="voice-session-tools.html">Voice session tools</a></span>
+    <span><a href="human-in-the-loop.html">Human-in-the-loop →</a></span>
+  </div>
+</div>
+</body>
+</html>

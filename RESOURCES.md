@@ -53,6 +53,8 @@
   Attach images as `input_image` content parts via `conversation.item.create` on the data channel; discrete attachments, not live video. Use for: lesson 0017 voice + image context.
 - [OpenAI — Realtime conversations (function calling)](https://developers.openai.com/api/docs/guides/realtime-conversations#function-calling)
   Session `tools`, detect `function_call` on `response.done`, return `function_call_output`, then `response.create` for the spoken answer. Use for: lesson 0018 voice session tools.
+- [OpenAI — Guardrails and human review](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
+  Approvals pause tool execution until a person approves or rejects; same lifecycle applies to Realtime `function` tools when your client holds `function_call_output`. Use for: lesson 0019 voice tool approval.
 - [OpenAI — Introducing gpt-realtime (image input)](https://openai.com/index/introducing-gpt-realtime/)
   Product framing: app-controlled image sharing alongside audio/text in Realtime sessions. Use for: UX rationale ("attach then ask" vs ambient vision).
 - [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)

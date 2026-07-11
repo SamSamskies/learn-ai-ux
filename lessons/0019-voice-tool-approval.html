@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0019 · Voice Tool Approval</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0019</p>
+  <h1>Voice Tool Approval</h1>
+  <p class="dek">Lesson 0018 auto-ran a read-only lookup. Side-effecting tools need a gate. Today's win: register <strong>stage_research_brief</strong>, pause on the function call, show what the model wants to do, and only execute after the user approves.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Your lookup tool runs the moment the model asks — fine for read-only fetches. But staging a Research draft writes to <code>sessionStorage</code> and changes what the user sees next. That's a <strong>side effect</strong>: medium harm, medium scope, easy to undo but annoying if accidental.</p>
+  <ul>
+    <li>Realtime <code>function</code> tools execute in <em>your</em> client — you choose when to send <code>function_call_output</code>.</li>
+    <li>Hold the output item until approval; the session waits silently unless you label the pause.</li>
+    <li>Split tools by risk: <code>lookup_definition</code> stays auto-run; <code>stage_research_brief</code> gets a confirm dialog.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>In voice, tool approval is <strong>propose → show → decide → resume</strong>. The model proposes via <code>function_call</code>; your UI shows the args; approve or reject; then always send output + <code>response.create</code> so speech continues.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this section (5 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/agents/guardrails-approvals">OpenAI · Guardrails and human review</a> — focus on "Approvals are the human-in-the-loop path for tool calls." Pair with <a href="https://www.shapeof.ai/patterns/verification">Shape of AI · Verification</a>. Cheat sheet: <a href="../reference/voice-tool-approval.html">voice tool approval reference</a>.
+  </div>
+
+  <h2>Know this first (~4 min)</h2>
+
+  <h3>Same loop, different gate</h3>
+  <p>Lesson 0018: <code>response.done</code> → fetch → output → <code>response.create</code>. Today you insert a <strong>hold</strong> between detect and fetch. The model already stopped speaking; your job is to make the hold legible and show the proposed action.</p>
+
+  <h3>Rejections must complete the loop too</h3>
+  <p>On Cancel, still send <code>function_call_output</code> with <code>{ rejected: true }</code> and <code>response.create</code>. Otherwise the session stalls. Tune instructions so the model acknowledges the decline instead of retrying the tool.</p>
+
+  <h3>Reuse ConfirmDialog</h3>
+  <p>You already have an accessible modal from lesson 0006. Tool approval is the same component with different copy — show the parsed <code>query</code> in the description so the user approves the actual args, not a vague "Allow action?"</p>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Add the gated tool + handoff helper.</strong> Extend <code>lib/realtime-voice-tools.ts</code>:</p>
+<pre><code><span class="tok-key">export const</span> STAGE_RESEARCH_BRIEF_TOOL = {
+  type: <span class="tok-str">"function"</span> <span class="tok-key">as const</span>,
+  name: <span class="tok-str">"stage_research_brief"</span>,
+  description:
+    <span class="tok-str">"When the user wants a sourced research brief, citations, or deep lookup — not a quick definition — stage the topic for Research mode."</span>,
+  parameters: {
+    type: <span class="tok-str">"object"</span>,
+    properties: {
+      query: {
+        type: <span class="tok-str">"string"</span>,
+        description: <span class="tok-str">"The research topic or question to stage"</span>,
+      },
+    },
+    required: [<span class="tok-str">"query"</span>],
+  },
+};
+
+<span class="tok-key">export const</span> VOICE_TOOLS = [
+  LOOKUP_DEFINITION_TOOL,
+  STAGE_RESEARCH_BRIEF_TOOL,
+] <span class="tok-key">as const</span>;
+
+<span class="tok-key">export function</span> toolApprovalLabel(name: string): string {
+  <span class="tok-key">if</span> (name === STAGE_RESEARCH_BRIEF_TOOL.name) {
+    <span class="tok-key">return</span> <span class="tok-str">"Waiting for your approval…"</span>;
+  }
+  <span class="tok-key">return</span> <span class="tok-str">"Waiting for approval…"</span>;
+}
+
+<span class="tok-key">export function</span> rejectedToolOutput(callId: string) {
+  <span class="tok-key">return</span> functionOutputEvent(callId, {
+    rejected: <span class="tok-key">true</span>,
+    reason: <span class="tok-str">"user_declined"</span>,
+  });
+}</code></pre>
+      <p>Add to <code>lib/voice-handoff.ts</code> — a formatter that leads with the staged query:</p>
+<pre><code><span class="tok-key">export function</span> formatStagedResearchHandoff(
+  source: VoiceHandoffSource,
+  query: string,
+): string | null {
+  <span class="tok-key">const</span> trimmed = query.trim();
+  <span class="tok-key">const</span> context = formatVoiceHandoff(source);
+  <span class="tok-key">if</span> (!trimmed &amp;&amp; !context) <span class="tok-key">return null</span>;
+  <span class="tok-key">const</span> header = trimmed
+    ? <span class="tok-str">`Research this topic with sources: ${trimmed}`</span>
+    : <span class="tok-str">"Continue this as a source-backed research task."</span>;
+  <span class="tok-key">return</span> context ? <span class="tok-str">`${header}\n\n${context}`</span> : header;
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Register both tools on session mint.</strong> In <code>app/api/realtime/session/route.ts</code>, swap to <code>VOICE_TOOLS</code> and extend instructions:</p>
+<pre><code>tools: [...VOICE_TOOLS],
+instructions: [
+  <span class="tok-str">// …existing lines…</span>
+  <span class="tok-str">'Use lookup_definition only for quick term definitions.'</span>,
+  <span class="tok-str">'Use stage_research_brief when the user wants sources or a written brief.'</span>,
+  <span class="tok-str">'If stage_research_brief is rejected, acknowledge briefly and offer to stay in voice.'</span>,
+].join(<span class="tok-str">' '</span>),</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Branch tool handling in VoiceProbe.</strong> Add pending-approval state and split the handler:</p>
+<pre><code><span class="tok-key">type</span> PendingToolApproval = {
+  call: RealtimeFunctionCall;
+  query: string;
+};
+
+<span class="tok-key">const</span> [pendingTool, setPendingTool] =
+  useState&lt;PendingToolApproval | null&gt;(null);
+
+<span class="tok-key">function</span> handleFunctionCall(call: RealtimeFunctionCall) {
+  <span class="tok-key">if</span> (call.name === LOOKUP_DEFINITION_TOOL.name) {
+    void runVoiceTool(call);
+    <span class="tok-key">return</span>;
+  }
+  <span class="tok-key">if</span> (call.name === STAGE_RESEARCH_BRIEF_TOOL.name) {
+    <span class="tok-key">const</span> query = String(call.args.query ?? <span class="tok-str">""</span>).trim();
+    setPendingTool({ call, query });
+    setToolLabel(toolApprovalLabel(call.name));
+    <span class="tok-key">return</span>;
+  }
+}
+
+<span class="tok-key">function</span> resolveToolApproval(approved: boolean) {
+  <span class="tok-key">const</span> pending = pendingTool;
+  <span class="tok-key">if</span> (!pending) <span class="tok-key">return</span>;
+  setPendingTool(null);
+  setToolLabel(null);
+
+  <span class="tok-key">const</span> dc = dcRef.current;
+  <span class="tok-key">if</span> (dc?.readyState !== <span class="tok-str">"open"</span>) <span class="tok-key">return</span>;
+
+  <span class="tok-key">if</span> (approved) {
+    <span class="tok-key">const</span> draft = formatStagedResearchHandoff(
+      { history: transcript.history, draftUser: transcript.draftUser },
+      pending.query,
+    );
+    <span class="tok-key">if</span> (draft) saveVoiceHandoff(draft);
+    setTranscript((t) =&gt;
+      appendSystemTurn(t, pending.query
+        ? <span class="tok-str">`Staged for Research: ${pending.query}`</span>
+        : <span class="tok-str">"Staged for Research"</span>),
+    );
+    dc.send(JSON.stringify(
+      functionOutputEvent(pending.call.callId, { staged: <span class="tok-key">true</span>, query: pending.query }),
+    ));
+  } <span class="tok-key">else</span> {
+    dc.send(JSON.stringify(rejectedToolOutput(pending.call.callId)));
+  }
+  dc.send(JSON.stringify({ type: <span class="tok-str">"response.create"</span> }));
+}</code></pre>
+      <p>Wire <code>handleFunctionCall</code> where you currently call <code>runVoiceTool</code> directly. Clear <code>pendingTool</code> on disconnect.</p>
+    </li>
+
+    <li>
+      <p><strong>Add the approval dialog.</strong> Reuse <code>ConfirmDialog</code> — show the query in the description:</p>
+<pre><code>&lt;ConfirmDialog
+  open={pendingTool != null}
+  title="Stage this for Research?"
+  description={
+    pendingTool?.query
+      ? `This saves a draft and ends voice when you switch: “${pendingTool.query}”`
+      : "This saves a research draft you can open in Research mode."
+  }
+  confirmLabel="Stage draft"
+  onConfirm={() => resolveToolApproval(true)}
+  onCancel={() => resolveToolApproval(false)}
+/&gt;</code></pre>
+      <p>Optional: after approve, show a "Open Research" chip that navigates to <code>/</code> — the handoff buffer is already written.</p>
+    </li>
+
+    <li>
+      <p><strong>Run the smoke test.</strong></p>
+      <ul>
+        <li>Ask "What does VAD mean?" — lookup still auto-runs with <strong>Looking up…</strong> (no dialog).</li>
+        <li>Ask "Research the history of transformers with sources" — confirm dialog appears with the query; dock shows <strong>Waiting for your approval…</strong>.</li>
+        <li>Approve → assistant confirms aloud; switch to Research → composer seeded with the staged query + transcript context.</li>
+        <li>Repeat, Cancel → assistant acknowledges without staging; no handoff on Research tab.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Don't gate read-only lookups — prompt fatigue. Don't skip <code>response.create</code> on reject. Clear pending approval on disconnect/barge-in so stale dialogs don't appear after reconnect. If the model retries rejected tools, tighten the rejection instruction.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why send function_call_output on reject?</summary>
+    <p>The model issued a tool call and is waiting for a result item. Rejection is a valid result — without it, the conversation can't continue to a spoken response.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why show the query in the dialog?</summary>
+    <p>Voice users may not be looking at the screen. Surfacing parsed args is the voice equivalent of showing a diff before "Apply changes."</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What proves the split is working?</summary>
+    <p>Lookup = no dialog, labeled pause. Stage = dialog with query, dock hold label, staged handoff only on approve.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Model never calls stage_research_brief, dialog blocks barge-in awkwardly, or approve/reject both feel wrong? Tell me what you said and what the data channel logged. When the smoke test passes, note whether you'd auto-navigate to Research on approve or keep the user in voice until they choose.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0018-voice-session-tools.html">← 0018: Voice session tools</a></span>
+    <span><a href="../reference/voice-tool-approval.html">Reference: tool approval</a></span>
+    <span>Next: multimodal output</span>
+  </div>
+</div>
+</body>
+</html>
