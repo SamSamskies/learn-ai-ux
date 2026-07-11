@@ -39,8 +39,9 @@
 - Lesson 0014 shipped: voice in main app — mode switch (Research | Voice), shared chrome, mic entry, research-flavored session instructions. Switching after work begins now requires confirmation because route-local chat state is destroyed. Do NOT merge Realtime into useChat.
 - Lesson 0015 shipped: Voice → Research handoff — carry recent transcript context through a one-shot same-tab buffer and seed the Research composer for review; still tear down Realtime intentionally.
 - Lesson 0016 shipped: Semantic VAD config + legible turn-detection label. Learner found no win over server_vad at 500 ms — revert default to server_vad; keep centralized config file.
-- Lesson 0017: Voice + image context — attach resized JPEG via `conversation.item.create`, thumbnail in UI, ask aloud; handoff stays text-only for v1.
+- Lesson 0017 shipped: Voice + image context — attach resized JPEG via `conversation.item.create`, thumbnail in UI, ask aloud; handoff stays text-only for v1. Voice page layout refactored so session dock / attach strip no longer crowd the center transcript.
+- Lesson 0016 semantic VAD finding captured in LR-0018 — default stays server_vad at 500 ms.
 
 ## Future topics (backlog)
-- **Voice session tools** — Realtime function calling from voice mode.
+- **Voice tool approval** — HITL before side-effecting tools (beyond read-only lookup).
 - **Multimodal output** — image/audio generation in product surfaces.

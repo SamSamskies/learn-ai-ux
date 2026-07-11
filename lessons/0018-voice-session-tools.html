@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0018 · Voice Session Tools</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0018</p>
+  <h1>Voice Session Tools</h1>
+  <p class="dek">Voice mode answers from session context — but sometimes it needs a lookup. Today's win: register one Realtime tool, run it when the model asks, show <strong>Looking up…</strong> while it runs, then let the assistant speak the result.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Lessons 0010–0017 built lifecycle, transcripts, barge-in, handoff, and image attach. The voice surface still can't <em>do</em> anything outside the model's head. Realtime <strong>function calling</strong> closes that gap — with a new UX problem: the user stops hearing audio while your code runs.</p>
+  <ul>
+    <li>Tools register on the session; the model decides when to call them from spoken intent.</li>
+    <li>A tool turn is <code>response.done</code> → your fetch → <code>function_call_output</code> → <code>response.create</code> — not a normal speaking phase.</li>
+    <li>For a research assistant, keep voice tools lightweight (quick definitions). Sourced briefs stay in Research mode.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>A voice tool call is a <strong>legible pause</strong> in the conversation — label it, show what ran, then resume speech. Silent fetches feel like the agent froze.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this section (6 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-conversations#function-calling">OpenAI · Realtime conversations — Function calling</a> — focus on configure → detect <code>function_call</code> → <code>function_call_output</code> → <code>response.create</code>. Cheat sheet: <a href="../reference/voice-session-tools.html">voice session tools reference</a>.
+  </div>
+
+  <h2>Know this first (~4 min)</h2>
+
+  <h3>Where tools live</h3>
+  <p>Add a <code>tools</code> array when minting the session in <code>app/api/realtime/session/route.ts</code> (same place you set instructions and VAD). Descriptions matter — they steer when the model reaches for a tool vs answering from memory.</p>
+
+  <h3>Detecting a tool turn</h3>
+  <p>On a normal turn you get audio transcript deltas. On a tool turn, <code>response.done</code> arrives with <code>response.output[0].type === "function_call"</code> and no spoken answer yet. Parse <code>name</code>, <code>arguments</code> (JSON string), and <code>call_id</code> — you need the call id to return results.</p>
+
+  <h3>The silence gap</h3>
+  <p>Between <code>response.done</code> (function call) and the next audio delta, the user hears nothing. Reuse your <code>thinking</code> phase but change the label — "Looking up…" — and optionally log a system line in the transcript ("Looked up: RAG").</p>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Define the tool schema + parser.</strong> Create <code>lib/realtime-voice-tools.ts</code>:</p>
+<pre><code><span class="tok-key">export const</span> LOOKUP_DEFINITION_TOOL = {
+  type: <span class="tok-str">"function"</span> <span class="tok-key">as const</span>,
+  name: <span class="tok-str">"lookup_definition"</span>,
+  description:
+    <span class="tok-str">"Look up a one-sentence definition when the user asks what a term, acronym, or concept means."</span>,
+  parameters: {
+    type: <span class="tok-str">"object"</span>,
+    properties: {
+      term: {
+        type: <span class="tok-str">"string"</span>,
+        description: <span class="tok-str">"The word or phrase to define"</span>,
+      },
+    },
+    required: [<span class="tok-str">"term"</span>],
+  },
+};
+
+<span class="tok-key">export type</span> RealtimeFunctionCall = {
+  callId: string;
+  name: string;
+  args: Record&lt;string, unknown&gt;;
+};
+
+<span class="tok-key">export function</span> extractFunctionCall(event: {
+  type: string;
+  response?: {
+    output?: Array&lt;{
+      type?: string;
+      name?: string;
+      call_id?: string;
+      arguments?: string;
+    }&gt;;
+  };
+}): RealtimeFunctionCall | null {
+  <span class="tok-key">if</span> (event.type !== <span class="tok-str">"response.done"</span>) <span class="tok-key">return null</span>;
+  <span class="tok-key">const</span> item = event.response?.output?.find((o) =&gt; o.type === <span class="tok-str">"function_call"</span>);
+  <span class="tok-key">if</span> (!item?.call_id || !item.name) <span class="tok-key">return null</span>;
+  <span class="tok-key">let</span> args: Record&lt;string, unknown&gt; = {};
+  <span class="tok-key">try</span> {
+    args = JSON.parse(item.arguments ?? <span class="tok-str">"{}"</span>) <span class="tok-key">as</span> Record&lt;string, unknown&gt;;
+  } <span class="tok-key">catch</span> {
+    args = {};
+  }
+  <span class="tok-key">return</span> { callId: item.call_id, name: item.name, args };
+}
+
+<span class="tok-key">export function</span> functionOutputEvent(callId: string, output: unknown) {
+  <span class="tok-key">return</span> {
+    type: <span class="tok-str">"conversation.item.create"</span>,
+    item: {
+      type: <span class="tok-str">"function_call_output"</span>,
+      call_id: callId,
+      output: JSON.stringify(output),
+    },
+  };
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Add a stub lookup route.</strong> Create <code>app/api/voice/lookup/route.ts</code> — voice tools should stay fast and low-stakes; a canned stub is fine for this lesson:</p>
+<pre><code><span class="tok-key">import</span> { NextResponse } <span class="tok-key">from</span> <span class="tok-str">"next/server"</span>;
+
+<span class="tok-key">const</span> STUBS: Record&lt;string, string&gt; = {
+  rag: <span class="tok-str">"Retrieval-augmented generation — fetching external text to ground an answer."</span>,
+  vad: <span class="tok-str">"Voice activity detection — deciding when the user has finished speaking."</span>,
+};
+
+<span class="tok-key">export async function</span> POST(req: Request) {
+  <span class="tok-key">const</span> { term } = (await req.json()) <span class="tok-key">as</span> { term?: string };
+  <span class="tok-key">const</span> key = (term ?? <span class="tok-str">""</span>).trim().toLowerCase();
+  <span class="tok-key">const</span> definition =
+    STUBS[key] ?? <span class="tok-str">`No stub for "${term}" — suggest Research mode for a sourced brief.`</span>;
+  <span class="tok-key">return</span> NextResponse.json({ term, definition });
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Register the tool on session mint.</strong> In <code>app/api/realtime/session/route.ts</code>, import <code>LOOKUP_DEFINITION_TOOL</code> and add to the session object:</p>
+<pre><code>tools: [LOOKUP_DEFINITION_TOOL],
+tool_choice: <span class="tok-str">"auto"</span>,
+instructions: [
+  <span class="tok-str">// …existing lines…</span>
+  <span class="tok-str">'When the user asks what a term means, call lookup_definition instead of guessing.'</span>,
+  <span class="tok-str">'After a lookup, paraphrase the definition in one short spoken sentence.'</span>,
+].join(<span class="tok-str">' '</span>),</code></pre>
+      <p>Reconnect after changing session config.</p>
+    </li>
+
+    <li>
+      <p><strong>Handle the tool loop in VoiceProbe.</strong> Track in-flight tool work and extend <code>dc.onmessage</code>:</p>
+<pre><code><span class="tok-key">const</span> [toolLabel, setToolLabel] = useState&lt;string | null&gt;(null);
+<span class="tok-key">const</span> handledCalls = useRef(<span class="tok-key">new</span> Set&lt;string&gt;());
+
+<span class="tok-key">async function</span> runVoiceTool(call: RealtimeFunctionCall) {
+  <span class="tok-key">if</span> (call.name !== <span class="tok-str">"lookup_definition"</span>) <span class="tok-key">return</span>;
+  <span class="tok-key">const</span> term = String(call.args.term ?? <span class="tok-str">""</span>).trim();
+  setToolLabel(term ? <span class="tok-str">`Looking up “${term}”…`</span> : <span class="tok-str">"Looking up…"</span>);
+  <span class="tok-key">const</span> res = await fetch(<span class="tok-str">"/api/voice/lookup"</span>, {
+    method: <span class="tok-str">"POST"</span>,
+    headers: { <span class="tok-str">"Content-Type"</span>: <span class="tok-str">"application/json"</span> },
+    body: JSON.stringify({ term }),
+  });
+  <span class="tok-key">const</span> data = await res.json();
+  <span class="tok-key">const</span> dc = dcRef.current;
+  <span class="tok-key">if</span> (dc?.readyState !== <span class="tok-str">"open"</span>) <span class="tok-key">return</span>;
+  dc.send(JSON.stringify(functionOutputEvent(call.callId, data)));
+  dc.send(JSON.stringify({ type: <span class="tok-str">"response.create"</span> }));
+  setToolLabel(null);
+}
+
+<span class="tok-comm">// inside dc.onmessage, after phase/transcript reducers:</span>
+<span class="tok-key">const</span> call = extractFunctionCall(event);
+<span class="tok-key">if</span> (call &amp;&amp; !handledCalls.current.has(call.callId)) {
+  handledCalls.current.add(call.callId);
+  void runVoiceTool(call);
+}</code></pre>
+      <p>Pass <code>toolLabel</code> into <code>SessionDock</code> — when set, show it instead of "Thinking…". Clear <code>handledCalls</code> on disconnect.</p>
+    </li>
+
+    <li>
+      <p><strong>Run the smoke test.</strong></p>
+      <ul>
+        <li>Connect voice mode. Ask aloud: "What does RAG mean?"</li>
+        <li>Confirm the dock shows <strong>Looking up "RAG"…</strong> before speech resumes.</li>
+        <li>Assistant should speak a one-sentence definition grounded in the stub.</li>
+        <li>Ask something that needs sources ("Who invented transformers?") — model should answer briefly or suggest Research, not invent citations.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Don't treat tool latency like model thinking — label it. Don't register heavy research tools on voice; they blow the realtime budget and can't show citations. Guard against double-handling the same <code>call_id</code>. If the user disconnects mid-fetch, drop stale <code>response.create</code> sends.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why send response.create after function_call_output?</summary>
+    <p>The function call item only supplies data. The model still needs an explicit response turn to generate the spoken answer using that output.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why a stub API instead of wiring full Research search?</summary>
+    <p>Voice needs sub-second perceived progress and short answers. Full search + citations belongs in Research mode — same boundary as lessons 0014–0015.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What proves the UX is legible?</summary>
+    <p>During the fetch you see "Looking up…" (not blank silence or generic "Thinking…"), and the spoken answer references the lookup result.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Model never calls the tool, double responses, or unsure which tools belong on voice vs Research? Tell me what you asked and what appeared in the data channel. When the smoke test passes, note whether the lookup label felt sufficient or you'd want a transcript system line too.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0017-voice-image-context.html">← 0017: Voice + image</a></span>
+    <span><a href="../reference/voice-session-tools.html">Reference: voice tools</a></span>
+    <span>Next: tool approval / multimodal output</span>
+  </div>
+</div>
+</body>
+</html>

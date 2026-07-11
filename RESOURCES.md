@@ -51,6 +51,8 @@
   `server_vad` vs `semantic_vad`, `silence_duration_ms`, `threshold`, `prefix_padding_ms`, `eagerness`, `interrupt_response`. Use for: lesson 0013 latency budget & VAD tuning; lesson 0016 semantic turn boundaries.
 - [OpenAI — Realtime conversations (image inputs)](https://developers.openai.com/api/docs/guides/realtime-conversations#image-inputs)
   Attach images as `input_image` content parts via `conversation.item.create` on the data channel; discrete attachments, not live video. Use for: lesson 0017 voice + image context.
+- [OpenAI — Realtime conversations (function calling)](https://developers.openai.com/api/docs/guides/realtime-conversations#function-calling)
+  Session `tools`, detect `function_call` on `response.done`, return `function_call_output`, then `response.create` for the spoken answer. Use for: lesson 0018 voice session tools.
 - [OpenAI — Introducing gpt-realtime (image input)](https://openai.com/index/introducing-gpt-realtime/)
   Product framing: app-controlled image sharing alongside audio/text in Realtime sessions. Use for: UX rationale ("attach then ask" vs ambient vision).
 - [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)

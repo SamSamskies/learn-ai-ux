@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Voice Session Tools</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Voice Session Tools</h1>
+  <p class="dek">Realtime function calling in a speech-to-speech session — register tools, detect <code>function_call</code> items, execute, return output, resume the spoken response.</p>
+
+  <h2>Event loop (client)</h2>
+  <ol>
+    <li>Register <code>tools</code> on the session (mint route or <code>session.update</code>).</li>
+    <li>User speaks; VAD commits; model may emit <code>response.done</code> with <code>output[].type === "function_call"</code> instead of audio.</li>
+    <li>Client runs your code (fetch, stash, navigate).</li>
+    <li>Send <code>conversation.item.create</code> with <code>type: "function_call_output"</code> + matching <code>call_id</code>.</li>
+    <li>Send <code>response.create</code> — model speaks using the tool result.</li>
+  </ol>
+
+  <h2>Register a tool (session mint)</h2>
+<pre><code>tools: [
+  {
+    type: "function",
+    name: "lookup_definition",
+    description: "Short definition when the user asks what a term means.",
+    parameters: {
+      type: "object",
+      properties: {
+        term: { type: "string", description: "Word or phrase to define" },
+      },
+      required: ["term"],
+    },
+  },
+],
+tool_choice: "auto",</code></pre>
+
+  <h2>Detect a function call</h2>
+<pre><code>// response.done — inspect output[], not transcript deltas
+{
+  type: "response.done",
+  response: {
+    output: [{
+      type: "function_call",
+      name: "lookup_definition",
+      call_id: "call_abc",
+      arguments: "{\"term\":\"RAG\"}",
+    }],
+  },
+}</code></pre>
+
+  <h2>Return output + resume</h2>
+<pre><code>// 1. Result item
+{
+  type: "conversation.item.create",
+  item: {
+    type: "function_call_output",
+    call_id: "call_abc",
+    output: JSON.stringify({ definition: "Retrieval-augmented generation…" }),
+  },
+}
+
+// 2. Ask model to continue (spoken answer)
+{ type: "response.create" }</code></pre>
+
+  <h2>UX patterns</h2>
+  <table>
+    <thead>
+      <tr><th>Gap</th><th>Why it hurts</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Silent tool run</strong></td>
+        <td>User hears nothing while fetch runs — feels like a freeze</td>
+        <td>Label: "Looking up…" in dock or transcript; keep phase at thinking</td>
+      </tr>
+      <tr>
+        <td><strong>Hidden side effects</strong></td>
+        <td>Tool pinned data or called an API — user can't audit</td>
+        <td>Show a chip or system line: "Looked up: RAG"</td>
+      </tr>
+      <tr>
+        <td><strong>Tool + barge-in</strong></td>
+        <td>User interrupts during fetch</td>
+        <td>Abort in-flight fetch; ignore stale <code>response.create</code></td>
+      </tr>
+      <tr>
+        <td><strong>Research boundary</strong></td>
+        <td>Voice tool returns unsourced facts</td>
+        <td>Stub/light lookup only; "Continue in Research" for citations</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Symptom → fix</h2>
+  <table>
+    <thead>
+      <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Model never calls the tool</td>
+        <td>Weak description or tool not on session</td>
+        <td>Sharpen <code>description</code>; confirm <code>tools</code> in mint response</td>
+      </tr>
+      <tr>
+        <td>Tool runs but no spoken answer</td>
+        <td>Missing <code>response.create</code> after output</td>
+        <td>Always send both output item and <code>response.create</code></td>
+      </tr>
+      <tr>
+        <td><code>invalid_request_error</code> on output</td>
+        <td><code>call_id</code> mismatch</td>
+        <td>Use exact <code>call_id</code> from <code>response.done</code></td>
+      </tr>
+      <tr>
+        <td>Double execution</td>
+        <td>Handled same <code>response.done</code> twice</td>
+        <td>Track processed <code>call_id</code>s or response ids</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="source">
+    <span class="label">Primary source</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-conversations#function-calling">OpenAI · Realtime conversations — Function calling</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0018-voice-session-tools.html">← Lesson 0018</a></span>
+    <span><a href="multimodal-voice-input.html">Multimodal voice</a></span>
+    <span><a href="human-in-the-loop.html">Human-in-the-loop →</a></span>
+  </div>
+</div>
+</body>
+</html>
