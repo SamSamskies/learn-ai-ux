@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0017 · Voice + Image Context</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0017</p>
+  <h1>Voice + Image Context</h1>
+  <p class="dek">Voice mode answers fast — but users often want to talk about something <em>on screen</em>: a chart, a screenshot, a photo. Today's win: let them attach one image to a live Realtime session, show a thumbnail so they trust the model saw it, then ask aloud.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Lessons 0010–0016 built a solid voice surface: lifecycle, transcripts, barge-in, latency, mode switch, handoff, turn detection. The voice arc's next product gap is <strong>multimodal context</strong> — grounding spoken Q&amp;A in what the user is actually looking at.</p>
+  <ul>
+    <li>Realtime accepts images as discrete conversation items — not a live video stream.</li>
+    <li>Your app controls <em>when</em> an image enters context; the model doesn't auto-see your screen.</li>
+    <li>For a research assistant, this covers "what trend is in this chart?" before the user switches to Research for a sourced brief.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Multimodal voice is <strong>explicit attachment + spoken question</strong>, not ambient vision. Legibility (thumbnail, disabled-until-connected) matters as much as the API call.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this section (5 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/realtime-conversations#image-inputs">OpenAI · Realtime conversations — Image inputs</a> — focus on the <code>conversation.item.create</code> example. Cheat sheet: <a href="../reference/multimodal-voice-input.html">multimodal voice input reference</a>.
+  </div>
+
+  <h2>Know this first (~4 min)</h2>
+
+  <h3>How images enter a voice session</h3>
+  <p>Send a client event over the WebRTC data channel. The image becomes a user message in conversation history. With VAD on, attaching alone does not trigger a response — the user speaks next, and the model can reference the image when replying.</p>
+
+  <h3>Why resize on the client</h3>
+  <p>Images travel as base64 inside JSON on the data channel. A full phone photo or uncompressed PNG can be megabytes — slow or brittle. Resize to ~1024 px on the long edge and encode as JPEG before sending. This is a UX requirement, not an optimization nicety.</p>
+
+  <h3>What voice mode still can't do</h3>
+  <p>Your voice handoff carries transcript text, not images. If the user needs citations or a written analysis of the chart, "Continue in Research" remains the right exit — voice gives a spoken headline; Research gives sources.</p>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Add a client helper for resize + event payload.</strong> Create <code>lib/realtime-image-attach.ts</code>:</p>
+<pre><code><span class="tok-key">const</span> MAX_EDGE = 1024;
+<span class="tok-key">const</span> JPEG_QUALITY = 0.85;
+
+<span class="tok-key">export type</span> PreparedImage = {
+  dataUrl: string;
+  previewUrl: string;
+  label: string;
+};
+
+<span class="tok-key">export async function</span> prepareImageFile(file: File): Promise&lt;PreparedImage&gt; {
+  <span class="tok-key">if</span> (!file.type.startsWith(<span class="tok-str">"image/"</span>)) {
+    <span class="tok-key">throw new</span> Error(<span class="tok-str">"Choose an image file"</span>);
+  }
+  <span class="tok-key">const</span> bitmap = await createImageBitmap(file);
+  <span class="tok-key">const</span> scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  <span class="tok-key">const</span> w = Math.round(bitmap.width * scale);
+  <span class="tok-key">const</span> h = Math.round(bitmap.height * scale);
+  <span class="tok-key">const</span> canvas = document.createElement(<span class="tok-str">"canvas"</span>);
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext(<span class="tok-str">"2d"</span>)!.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  <span class="tok-key">const</span> dataUrl = canvas.toDataURL(<span class="tok-str">"image/jpeg"</span>, JPEG_QUALITY);
+  <span class="tok-key">return</span> { dataUrl, previewUrl: dataUrl, label: file.name };
+}
+
+<span class="tok-key">export function</span> imageAttachEvent(dataUrl: string) {
+  <span class="tok-key">return</span> {
+    type: <span class="tok-str">"conversation.item.create"</span>,
+    item: {
+      type: <span class="tok-str">"message"</span>,
+      role: <span class="tok-str">"user"</span>,
+      content: [{ type: <span class="tok-str">"input_image"</span>, image_url: dataUrl }],
+    },
+  };
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Wire attach in VoiceProbe.</strong> Add state for the pending thumbnail, a hidden file input, and a send helper that uses the open data channel:</p>
+<pre><code><span class="tok-key">const</span> [attachedImage, setAttachedImage] = useState&lt;PreparedImage | null&gt;(null);
+
+<span class="tok-key">async function</span> attachImage(file: File) {
+  <span class="tok-key">const</span> prepared = await prepareImageFile(file);
+  <span class="tok-key">const</span> dc = dcRef.current;
+  <span class="tok-key">if</span> (dc?.readyState !== <span class="tok-str">"open"</span>) <span class="tok-key">throw new</span> Error(<span class="tok-str">"Connect first"</span>);
+  dc.send(JSON.stringify(imageAttachEvent(prepared.dataUrl)));
+  setAttachedImage(prepared);
+}</code></pre>
+      <p>Render an <strong>Attach image</strong> button (disabled until <code>connected</code>). On success, show a small thumbnail + filename under the phase badge — "Attached — ask about this aloud."</p>
+    </li>
+
+    <li>
+      <p><strong>Nudge session instructions.</strong> In <code>app/api/realtime/session/route.ts</code>, add one line to the instructions array:</p>
+<pre><code><span class="tok-str">'When the user attaches an image, describe what you see briefly in spoken form.'</span>,
+<span class="tok-str">'Do not invent precise numbers from charts unless clearly legible.'</span>,</code></pre>
+      <p>Reconnect after changing session config.</p>
+    </li>
+
+    <li>
+      <p><strong>Run the smoke test.</strong></p>
+      <ul>
+        <li>Connect voice mode. Attach a chart or screenshot (PNG/JPEG).</li>
+        <li>Confirm the thumbnail appears before you speak.</li>
+        <li>Ask aloud: "What's the main trend here?" — assistant should reference visible content.</li>
+        <li>Try a 4+ MB original — confirm resize keeps attach snappy.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Don't auto-send <code>response.create</code> on attach unless you've disabled VAD — let the user's spoken question drive the turn. Don't promise image carry-over in "Continue in Research" yet; transcript handoff is text-only for v1. Clear the thumbnail when disconnecting so stale context doesn't confuse the next session.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why not stream the webcam continuously?</summary>
+    <p>Realtime image input is discrete messages, not video. Continuous capture burns bandwidth, raises privacy concerns, and your app loses control over what the model sees. Attach-on-demand matches research-style "look at this slide" workflows.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why show a thumbnail if the model already has the image?</summary>
+    <p>Trust. Users can't inspect session JSON. A visible chip confirms the attach succeeded and sets expectations for the next spoken question.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>When should the user switch to Research instead?</summary>
+    <p>When they need numbered sources, a written brief, or editable output — the same boundary as lesson 0014's mode split. Voice describes; Research cites.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Attach stalling, model ignoring the image, or unsure how image + handoff should evolve? Tell me what you attached and what the assistant said. When the smoke test passes, note whether spoken chart Q&amp;A felt useful or whether you'd skip straight to Research.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0016-semantic-vad-turn-boundaries.html">← 0016: Semantic VAD</a></span>
+    <span><a href="../reference/multimodal-voice-input.html">Reference: multimodal voice</a></span>
+    <span>Next: voice session tools</span>
+  </div>
+</div>
+</body>
+</html>

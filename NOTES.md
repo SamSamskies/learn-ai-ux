@@ -38,7 +38,9 @@
 - Lesson 0013 shipped: turn-latency readout; `silence_duration_ms: 500` feels right for snappy Q&A (validated against budget).
 - Lesson 0014 shipped: voice in main app — mode switch (Research | Voice), shared chrome, mic entry, research-flavored session instructions. Switching after work begins now requires confirmation because route-local chat state is destroyed. Do NOT merge Realtime into useChat.
 - Lesson 0015 shipped: Voice → Research handoff — carry recent transcript context through a one-shot same-tab buffer and seed the Research composer for review; still tear down Realtime intentionally.
-- Lesson 0016: Semantic VAD — switch from fixed silence to `semantic_vad` when mid-thought pauses break server_vad; tune `eagerness`, surface mode in UI.
+- Lesson 0016 shipped: Semantic VAD config + legible turn-detection label. Learner found no win over server_vad at 500 ms — revert default to server_vad; keep centralized config file.
+- Lesson 0017: Voice + image context — attach resized JPEG via `conversation.item.create`, thumbnail in UI, ask aloud; handoff stays text-only for v1.
 
 ## Future topics (backlog)
-- **Multimodal I/O** — vision input, image and audio output.
+- **Voice session tools** — Realtime function calling from voice mode.
+- **Multimodal output** — image/audio generation in product surfaces.

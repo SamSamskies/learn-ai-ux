@@ -49,6 +49,10 @@
   VAD barge-in, `response.cancel` / `response.cancelled`, WebRTC auto-truncation vs WebSocket `conversation.item.truncate`. Use for: lesson 0012 barge-in UX.
 - [OpenAI — Realtime VAD (voice activity detection)](https://developers.openai.com/api/docs/guides/realtime-vad)
   `server_vad` vs `semantic_vad`, `silence_duration_ms`, `threshold`, `prefix_padding_ms`, `eagerness`, `interrupt_response`. Use for: lesson 0013 latency budget & VAD tuning; lesson 0016 semantic turn boundaries.
+- [OpenAI — Realtime conversations (image inputs)](https://developers.openai.com/api/docs/guides/realtime-conversations#image-inputs)
+  Attach images as `input_image` content parts via `conversation.item.create` on the data channel; discrete attachments, not live video. Use for: lesson 0017 voice + image context.
+- [OpenAI — Introducing gpt-realtime (image input)](https://openai.com/index/introducing-gpt-realtime/)
+  Product framing: app-controlled image sharing alongside audio/text in Realtime sessions. Use for: UX rationale ("attach then ask" vs ambient vision).
 - [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)
   Short spoken answers, visual companion for lists/URLs, "voice for the headline, screen for the data." Use for: lesson 0014 mode-switch UX and session instructions.
 - [MDN — Window: sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)

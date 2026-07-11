@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Multimodal Voice Input</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Multimodal Voice Input</h1>
+  <p class="dek">Realtime voice sessions accept discrete image attachments — not a live camera feed. Your app decides <em>which</em> images enter context and <em>when</em>.</p>
+
+  <h2>What it is (and isn't)</h2>
+  <table>
+    <thead>
+      <tr><th></th><th>Behavior</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Is</strong></td>
+        <td>A user message with an <code>input_image</code> content part, sent over the data channel</td>
+      </tr>
+      <tr>
+        <td><strong>Isn't</strong></td>
+        <td>Continuous video streaming, automatic screen capture, or vision baked into every audio frame</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Images become conversation items the model can reference on the next spoken turn — ideal for charts, screenshots, and photos the user explicitly shares.</p>
+
+  <h2>Wire format</h2>
+<pre><code>{
+  type: "conversation.item.create",
+  item: {
+    type: "message",
+    role: "user",
+    content: [
+      {
+        type: "input_image",
+        image_url: "data:image/jpeg;base64,{bytes}",
+        detail: "auto",   // optional: auto | low | high
+      },
+    ],
+  },
+}</code></pre>
+  <p>Send via the WebRTC data channel (<code>dataChannel.send(JSON.stringify(event))</code>). With VAD enabled, attaching alone does not speak — the user asks aloud on the next turn.</p>
+
+  <h2>Client constraints</h2>
+  <ul>
+    <li><strong>Resize before encode.</strong> Full-resolution PNGs as base64 can choke the data channel. Cap the long edge (~1024 px) and prefer JPEG (~0.85 quality).</li>
+    <li><strong>One attachment at a time</strong> for v1 — simpler UX and smaller payloads.</li>
+    <li><strong>Show a thumbnail</strong> in the voice UI so users know the model can see what they attached.</li>
+  </ul>
+
+  <h2>UX patterns</h2>
+  <table>
+    <thead>
+      <tr><th>Pattern</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Attach → ask aloud</strong></td>
+        <td>Default. Image item lands in history; VAD commits the spoken question; model responds with audio.</td>
+      </tr>
+      <tr>
+        <td><strong>Attach with caption text</strong></td>
+        <td>Add <code>input_text</code> in the same message when the image needs a label ("Q3 revenue slide").</td>
+      </tr>
+      <tr>
+        <td><strong>Defer to Research</strong></td>
+        <td>When the answer needs citations or a written brief — voice describes what it sees; handoff carries transcript, not the image (v1 limitation).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Product legibility checklist</h2>
+  <ol>
+    <li>Visible attach control (disabled until connected).</li>
+    <li>Thumbnail or filename chip after attach — "Model can see this."</li>
+    <li>Clear error if file is too large or wrong type.</li>
+    <li>Session instructions mention screenshot/chart questions so spoken answers stay short.</li>
+  </ol>
+
+  <h2>Symptom → fix</h2>
+  <table>
+    <thead>
+      <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Attach succeeds but model ignores image</td>
+        <td>Image item not in context before response</td>
+        <td>Attach before speaking; check data-channel send errors</td>
+      </tr>
+      <tr>
+        <td>Data channel silent / session drops on attach</td>
+        <td>Payload too large</td>
+        <td>Resize/compress client-side; cap file size (~4 MB raw)</td>
+      </tr>
+      <tr>
+        <td>Model hallucinates chart numbers</td>
+        <td>Voice mode has no citation layer</td>
+        <td>Short spoken summary + "Continue in Research" for sourced analysis</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="lesson-nav">
+    <span><a href="../lessons/0017-voice-image-context.html">← Lesson 0017</a></span>
+    <span><a href="semantic-vad.html">Semantic VAD</a></span>
+    <span><a href="voice-mode-switch.html">Voice mode switch →</a></span>
+  </div>
+</div>
+</body>
+</html>

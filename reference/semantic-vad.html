@@ -101,6 +101,7 @@
     <li>Start with <code>server_vad</code> + measured <code>silence_duration_ms</code>.</li>
     <li>If raising silence fixes mid-thought cutoffs but breaks snappy Q&amp;A, try <code>semantic_vad</code>.</li>
     <li>Tune <code>eagerness</code> before reverting — don't bounce between modes without a smoke test.</li>
+    <li>If semantic mode feels sluggish with no cutoff improvement, revert — a defended server_vad default is valid.</li>
     <li>Reconnect after session config changes — values are set at mint.</li>
   </ol>
 
