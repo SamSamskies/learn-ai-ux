@@ -42,8 +42,9 @@
 - Lesson 0017 shipped: Voice + image context — attach resized JPEG via `conversation.item.create`, thumbnail in UI, ask aloud; handoff stays text-only for v1. Voice page layout refactored so session dock / attach strip no longer crowd the center transcript.
 - Lesson 0016 semantic VAD finding captured in LR-0018 — default stays server_vad at 500 ms.
 - Lesson 0018 shipped: `lookup_definition` Realtime tool — auto-run with "Looking up…" label + transcript system line. Tool loop pattern established (LR-0020).
-- Lesson 0019 next: voice tool approval — gate `stage_research_brief` before writing handoff; lookup stays auto-run.
+- Lesson 0019 shipped: voice tool approval — gate `stage_research_brief`; lookup stays auto-run.
+- Learner finds Realtime STT unreliable ("hardly ever understands") — bias toward confirm/edit-on-screen for spoken tool args; don't oversell voice for precise prompts.
+- Lesson 0020 next: multimodal output — voice-triggered image gen with editable prompt gate, then show result in transcript ("voice for the headline, screen for the picture").
 
 ## Future topics (backlog)
-- **Multimodal output** — image/audio generation in product surfaces.
-- **Voice arc wrap-up** — audit voice surface against mission checklist.
+- **Voice arc wrap-up** — audit voice surface against mission checklist (after multimodal output).

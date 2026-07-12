@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Multimodal Voice Output</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Multimodal Voice Output</h1>
+  <p class="dek">Generate images from a Realtime voice session via a client-owned function tool — confirm the prompt on screen, then show the picture while speech narrates.</p>
+
+  <h2>Pipeline</h2>
+  <ol>
+    <li>User asks aloud to draw / sketch / visualize.</li>
+    <li>Model emits <code>function_call</code> for <code>generate_illustration</code> with a <code>prompt</code> arg.</li>
+    <li>Client <strong>holds</strong> — dock: "Confirm the image prompt…"; editable textarea seeded from args.</li>
+    <li>User edits (optional) → Generate, or Cancel.</li>
+    <li>On Generate: dock "Generating image…" → <code>POST /api/voice/generate-image</code> → append image turn to transcript.</li>
+    <li><code>function_call_output</code> + <code>response.create</code> → model speaks a one-line caption.</li>
+  </ol>
+
+  <h2>Why gate + edit</h2>
+  <table>
+    <thead>
+      <tr><th>Risk</th><th>Why it matters in voice</th><th>UX</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>STT error</strong></td>
+        <td>Misheard nouns ruin creative prompts</td>
+        <td>Editable prompt before spend</td>
+      </tr>
+      <tr>
+        <td><strong>Cost / latency</strong></td>
+        <td>Image gen is slower and pricier than a lookup</td>
+        <td>Explicit confirm; cheap model settings for prototypes</td>
+      </tr>
+      <tr>
+        <td><strong>Wrong modality</strong></td>
+        <td>User may have meant "explain," not "draw"</td>
+        <td>Cancel completes the loop; model stays in voice</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Images API (server)</h2>
+<pre><code>await openai.images.generate({
+  model: "gpt-image-1-mini",
+  prompt,
+  size: "1024x1024",
+  quality: "low",
+});
+// result.data[0].b64_json → data:image/png;base64,...</code></pre>
+  <p>Keep the key on the server. Client only receives a data URL (or a short-lived hosted URL if you add storage later).</p>
+
+  <h2>Transcript turn</h2>
+<pre><code>{
+  role: "assistant",
+  text: "edited prompt used for generation",
+  imageUrl: "data:image/png;base64,…",
+}</code></pre>
+  <p>Render <code>imageUrl</code> as an <code>&lt;img&gt;</code>; use <code>text</code> as caption/alt. Voice says the headline; the screen holds the artifact.</p>
+
+  <h2>Tool risk split (voice)</h2>
+  <table>
+    <thead>
+      <tr><th>Tool</th><th>Gate?</th><th>Label</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>lookup_definition</code></td>
+        <td>Auto-run</td>
+        <td>Looking up…</td>
+      </tr>
+      <tr>
+        <td><code>stage_research_brief</code></td>
+        <td>Confirm (show query)</td>
+        <td>Waiting for your approval…</td>
+      </tr>
+      <tr>
+        <td><code>generate_illustration</code></td>
+        <td>Confirm + <strong>edit prompt</strong></td>
+        <td>Confirm… → Generating image…</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Out of scope (v1)</h2>
+  <ul>
+    <li>Variations grid (Shape of AI Variations) — one image per call</li>
+    <li>Streaming partial images</li>
+    <li>Persisting images beyond the tab session</li>
+    <li>Feeding the generated image back into Realtime as <code>input_image</code> unless you explicitly need follow-up vision</li>
+  </ul>
+
+  <div class="source">
+    <span class="label">Sources</span>
+    <a href="https://developers.openai.com/api/docs/guides/image-generation">OpenAI · Image generation</a> ·
+    <a href="https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns">AI Design Patterns · Voice</a> ·
+    <a href="https://www.shapeof.ai/patterns/variations">Shape of AI · Variations</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="multimodal-voice-input.html">← Multimodal input</a></span>
+    <span><a href="../lessons/0020-voice-image-output.html">Lesson 0020</a></span>
+    <span><a href="voice-tool-approval.html">Tool approval →</a></span>
+  </div>
+</div>
+</body>
+</html>

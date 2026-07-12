@@ -55,10 +55,14 @@
   Session `tools`, detect `function_call` on `response.done`, return `function_call_output`, then `response.create` for the spoken answer. Use for: lesson 0018 voice session tools.
 - [OpenAI — Guardrails and human review](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
   Approvals pause tool execution until a person approves or rejects; same lifecycle applies to Realtime `function` tools when your client holds `function_call_output`. Use for: lesson 0019 voice tool approval.
+- [OpenAI — Image generation](https://developers.openai.com/api/docs/guides/image-generation)
+  GPT Image models via Images API (`/images/generations`); returns `b64_json` by default. Prefer cheaper/faster settings (`gpt-image-1-mini`, `quality: "low"`) for voice-tool prototypes. Use for: lesson 0020 multimodal output.
 - [OpenAI — Introducing gpt-realtime (image input)](https://openai.com/index/introducing-gpt-realtime/)
   Product framing: app-controlled image sharing alongside audio/text in Realtime sessions. Use for: UX rationale ("attach then ask" vs ambient vision).
 - [AI Design Patterns — Voice interface design patterns](https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns)
-  Short spoken answers, visual companion for lists/URLs, "voice for the headline, screen for the data." Use for: lesson 0014 mode-switch UX and session instructions.
+  Short spoken answers, visual companion for lists/URLs, "voice for the headline, screen for the data." Use for: lesson 0014 mode-switch UX; lesson 0020 image-as-visual-companion.
+- [Shape of AI — Variations](https://www.shapeof.ai/patterns/variations)
+  Probabilistic media needs compare/select affordances; single-shot generation is a deliberate v1 tradeoff. Use for: lesson 0020 scope note (one image now; variations later).
 - [MDN — Window: sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)
   Per-tab storage scoped to the page session and origin. Use for: a small, one-shot handoff buffer between sibling Research and Voice routes without putting transcript text in the URL.
 

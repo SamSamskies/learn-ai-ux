@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0020 · Voice Image Output</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0020</p>
+  <h1>Voice Image Output</h1>
+  <p class="dek">Lesson 0017 attached images <em>into</em> the session. Today the model asks to generate one <em>out</em>. Win: a gated <strong>generate_illustration</strong> tool, editable prompt on screen (because STT will mangle it), then the picture in the transcript while voice narrates.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Mission multimodal I/O is half-done: input shipped, output hasn't. Realtime already speaks — that's audio out. What's missing is <strong>visual companion media</strong>: the screen shows what speech can't carry (a diagram, a sketch, a chart mock).</p>
+  <ul>
+    <li>Images don't come from Realtime audio — your client runs a tool that calls the Images API, then you render the result.</li>
+    <li>Spoken prompts are lossy. Confirming the prompt on screen is the product fix, not hoping transcription improves.</li>
+    <li>Pattern: <em>voice for the headline, screen for the picture</em> — same rule as lists and URLs.</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="label">The core idea</span>
+    <p>Multimodal output in voice is <strong>propose prompt → edit on screen → generate → show + speak</strong>. Never fire image gen from an unverified transcript.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source — read this section (6 min)</span>
+    <a href="https://developers.openai.com/api/docs/guides/image-generation">OpenAI · Image generation</a> — skim Generate Images + customize output (<code>quality</code>, <code>size</code>). Pair with <a href="https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns">AI Design Patterns · Voice</a> ("When Voice Needs a Visual Companion"). Cheat sheet: <a href="../reference/multimodal-voice-output.html">multimodal voice output reference</a>.
+  </div>
+
+  <h2>Know this first (~4 min)</h2>
+
+  <h3>Same tool loop, longer pause</h3>
+  <p>Reuse lessons 0018–0019: detect <code>function_call</code> → hold for approval → execute → <code>function_call_output</code> → <code>response.create</code>. Image gen can take several seconds — dock label should say <strong>Generating image…</strong>, not "Looking up…".</p>
+
+  <h3>Why the prompt must be editable</h3>
+  <p>Staging a research query is short and checkable. An illustration prompt is long and creative — one misheard word ruins it and costs tokens. Show a textarea prefilled with the model's <code>prompt</code> arg. Approve sends <em>your</em> edited string to the API.</p>
+
+  <h3>Keep generation cheap for the prototype</h3>
+  <p>Use <code>gpt-image-1-mini</code>, <code>quality: "low"</code>, <code>size: "1024x1024"</code>. Return <code>b64_json</code> and display as a <code>data:</code> URL. One image per call — Shape of AI's Variations pattern is out of scope for this lesson.</p>
+
+  <h2>Build it (~20 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Add the tool + helpers.</strong> Extend <code>lib/realtime-voice-tools.ts</code>:</p>
+<pre><code><span class="tok-key">export const</span> GENERATE_ILLUSTRATION_TOOL = {
+  type: <span class="tok-str">"function"</span> <span class="tok-key">as const</span>,
+  name: <span class="tok-str">"generate_illustration"</span>,
+  description:
+    <span class="tok-str">"Create a simple illustration or diagram when the user asks to draw, sketch, visualize, or generate an image. Pass a detailed visual prompt."</span>,
+  parameters: {
+    type: <span class="tok-str">"object"</span>,
+    properties: {
+      prompt: {
+        type: <span class="tok-str">"string"</span>,
+        description: <span class="tok-str">"Detailed description of the image to generate"</span>,
+      },
+    },
+    required: [<span class="tok-str">"prompt"</span>],
+  },
+};
+
+<span class="tok-key">export const</span> VOICE_TOOLS = [
+  LOOKUP_DEFINITION_TOOL,
+  STAGE_RESEARCH_BRIEF_TOOL,
+  GENERATE_ILLUSTRATION_TOOL,
+] <span class="tok-key">as const</span>;
+
+<span class="tok-key">export function</span> toolApprovalLabel(name: string): string {
+  <span class="tok-key">if</span> (name === STAGE_RESEARCH_BRIEF_TOOL.name) {
+    <span class="tok-key">return</span> <span class="tok-str">"Waiting for your approval…"</span>;
+  }
+  <span class="tok-key">if</span> (name === GENERATE_ILLUSTRATION_TOOL.name) {
+    <span class="tok-key">return</span> <span class="tok-str">"Confirm the image prompt…"</span>;
+  }
+  <span class="tok-key">return</span> <span class="tok-str">"Waiting for approval…"</span>;
+}
+
+<span class="tok-key">export function</span> generatingImageLabel(): string {
+  <span class="tok-key">return</span> <span class="tok-str">"Generating image…"</span>;
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Server route for Images API.</strong> Create <code>app/api/voice/generate-image/route.ts</code> (keep the key server-side):</p>
+<pre><code><span class="tok-key">import</span> OpenAI <span class="tok-key">from</span> <span class="tok-str">"openai"</span>;
+<span class="tok-key">import</span> { NextResponse } <span class="tok-key">from</span> <span class="tok-str">"next/server"</span>;
+
+<span class="tok-key">const</span> openai = <span class="tok-key">new</span> OpenAI();
+
+<span class="tok-key">export async function</span> POST(req: Request) {
+  <span class="tok-key">const</span> { prompt } = (<span class="tok-key">await</span> req.json()) <span class="tok-key">as</span> { prompt?: string };
+  <span class="tok-key">const</span> trimmed = (prompt ?? <span class="tok-str">""</span>).trim();
+  <span class="tok-key">if</span> (!trimmed) {
+    <span class="tok-key">return</span> NextResponse.json({ error: <span class="tok-str">"prompt required"</span> }, { status: 400 });
+  }
+
+  <span class="tok-key">const</span> result = <span class="tok-key">await</span> openai.images.generate({
+    model: <span class="tok-str">"gpt-image-1-mini"</span>,
+    prompt: trimmed,
+    size: <span class="tok-str">"1024x1024"</span>,
+    quality: <span class="tok-str">"low"</span>,
+  });
+
+  <span class="tok-key">const</span> b64 = result.data?.[0]?.b64_json;
+  <span class="tok-key">if</span> (!b64) {
+    <span class="tok-key">return</span> NextResponse.json({ error: <span class="tok-str">"no image"</span> }, { status: 502 });
+  }
+
+  <span class="tok-key">return</span> NextResponse.json({
+    imageDataUrl: <span class="tok-str">`data:image/png;base64,${b64}`</span>,
+    prompt: trimmed,
+  });
+}</code></pre>
+    </li>
+
+    <li>
+      <p><strong>Transcript can hold an image.</strong> Extend <code>Turn</code> and add a helper:</p>
+<pre><code><span class="tok-key">export type</span> Turn = {
+  role: <span class="tok-str">"user"</span> | <span class="tok-str">"assistant"</span> | <span class="tok-str">"system"</span>;
+  text: string;
+  interrupted?: <span class="tok-key">boolean</span>;
+  imageUrl?: string;
+};
+
+<span class="tok-key">export function</span> appendImageTurn(
+  state: TranscriptState,
+  prompt: string,
+  imageUrl: string,
+): TranscriptState {
+  <span class="tok-key">return</span> {
+    ...state,
+    history: [
+      ...state.history,
+      { role: <span class="tok-str">"assistant"</span>, text: prompt, imageUrl },
+    ],
+  };
+}</code></pre>
+      <p>In <code>Transcript.tsx</code>, when <code>turn.imageUrl</code> is set, render an <code>&lt;img&gt;</code> under the text (alt = prompt). Keep layout simple — full width of the assistant column, rounded corners matching existing chrome.</p>
+    </li>
+
+    <li>
+      <p><strong>Approval UI with editable prompt.</strong> Don't reuse plain ConfirmDialog for this — you need a textarea. Add a small <code>ImageGenApproval.tsx</code> (or inline in VoiceProbe): title "Generate this image?", controlled <code>textarea</code> seeded from the tool arg, Cancel / Generate buttons. On open, dock label = <code>toolApprovalLabel(GENERATE_ILLUSTRATION_TOOL.name)</code>.</p>
+    </li>
+
+    <li>
+      <p><strong>Wire the branch in VoiceProbe.</strong> Extend pending state (or a second piece of state) for image gen:</p>
+<pre><code><span class="tok-key">type</span> PendingImageGen = {
+  call: RealtimeFunctionCall;
+  prompt: string;
+};
+
+<span class="tok-key">//</span> in handleFunctionCall:
+<span class="tok-key">if</span> (call.name === GENERATE_ILLUSTRATION_TOOL.name) {
+  <span class="tok-key">const</span> prompt = String(call.args.prompt ?? <span class="tok-str">""</span>).trim();
+  setPendingImage({ call, prompt });
+  setToolLabel(toolApprovalLabel(call.name));
+  <span class="tok-key">return</span>;
+}
+
+<span class="tok-key">async function</span> resolveImageGen(approved: <span class="tok-key">boolean</span>, editedPrompt: string) {
+  <span class="tok-key">const</span> pending = pendingImage;
+  <span class="tok-key">if</span> (!pending) <span class="tok-key">return</span>;
+  setPendingImage(null);
+
+  <span class="tok-key">const</span> dc = dcRef.current;
+  <span class="tok-key">if</span> (dc?.readyState !== <span class="tok-str">"open"</span>) <span class="tok-key">return</span>;
+
+  <span class="tok-key">if</span> (!approved) {
+    setToolLabel(null);
+    dc.send(JSON.stringify(rejectedToolOutput(pending.call.callId)));
+    dc.send(JSON.stringify({ type: <span class="tok-str">"response.create"</span> }));
+    <span class="tok-key">return</span>;
+  }
+
+  setToolLabel(generatingImageLabel());
+  <span class="tok-key">try</span> {
+    <span class="tok-key">const</span> res = <span class="tok-key">await</span> fetch(<span class="tok-str">"/api/voice/generate-image"</span>, {
+      method: <span class="tok-str">"POST"</span>,
+      headers: { <span class="tok-str">"Content-Type"</span>: <span class="tok-str">"application/json"</span> },
+      body: JSON.stringify({ prompt: editedPrompt }),
+    });
+    <span class="tok-key">const</span> data = <span class="tok-key">await</span> res.json();
+    <span class="tok-key">if</span> (!res.ok || !data.imageDataUrl) <span class="tok-key">throw new</span> Error(data.error ?? <span class="tok-str">"failed"</span>);
+
+    setTranscript((t) =&gt; appendImageTurn(t, editedPrompt, data.imageDataUrl));
+    dc.send(JSON.stringify(
+      functionOutputEvent(pending.call.callId, {
+        ok: <span class="tok-key">true</span>,
+        note: <span class="tok-str">"Image is on screen. Describe it in one short spoken sentence."</span>,
+      }),
+    ));
+  } <span class="tok-key">catch</span> {
+    dc.send(JSON.stringify(
+      functionOutputEvent(pending.call.callId, {
+        ok: <span class="tok-key">false</span>,
+        error: <span class="tok-str">"generation_failed"</span>,
+      }),
+    ));
+  }
+  setToolLabel(null);
+  dc.send(JSON.stringify({ type: <span class="tok-str">"response.create"</span> }));
+}</code></pre>
+      <p>Register the tool in session instructions: call <code>generate_illustration</code> when the user asks to draw/sketch/visualize; if rejected, acknowledge and stay in voice.</p>
+    </li>
+
+    <li>
+      <p><strong>Smoke test.</strong></p>
+      <ul>
+        <li>Say "Draw a simple diagram of how RAG works" — approval opens with a prompt; <strong>edit one word</strong> before Generate.</li>
+        <li>Dock shows Confirm → Generating… → image appears in transcript; assistant speaks a one-liner.</li>
+        <li>Cancel path: no image, spoken acknowledgment, session still live.</li>
+        <li>Lookup and stage_research_brief still behave as before.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="callout warn">
+    <span class="label">Watch out</span>
+    <p>Don't auto-run image gen from raw STT — that's how you burn money on gibberish prompts. Don't put the API key in client code. Clear pending image approval on disconnect. If generation fails, still complete the function-call loop so the model can apologize aloud.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Why not generate inside Realtime itself?</summary>
+    <p>Realtime is speech-to-speech. Image bytes come from the Images API (or a Responses image tool). Your client owns the tool run and the UI that shows the result.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Why edit the prompt on screen?</summary>
+    <p>Voice transcription is lossy for creative detail. The editable prompt is strategic friction that matches cost × irreversibility of a bad generation.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What does the user see vs hear?</summary>
+    <p>Screen: the image (and prompt caption). Voice: a short spoken description — headline only.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — ask me anything.</strong> Model never calls generate_illustration, Images API errors, or the data URL blows up the transcript scroll? Paste the error and what you said aloud. When it works, notice whether you'd rather regenerate variations next — or wrap the voice arc.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0019-voice-tool-approval.html">← 0019: Voice tool approval</a></span>
+    <span><a href="../reference/multimodal-voice-output.html">Reference: multimodal output</a></span>
+    <span>Next: voice arc wrap-up</span>
+  </div>
+</div>
+</body>
+</html>
