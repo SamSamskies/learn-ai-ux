@@ -11,15 +11,11 @@ I'm a 10+ year frontend engineer leveling up as an AI Product Engineer — not f
 - I can reason about **perceived latency** (acknowledge instantly, make progress legible, know when to add strategic friction) and apply optimistic updates.
 - I can explain the UX decisions behind my builds — in code comments, PRs, or docs — so others can learn from or reuse them.
 
-## Next horizon (planned, after the text-surface core)
-Text is only one surface. Voice and multimodal are one of the fastest-growing product areas, and the UX of a nondeterministic *voice* agent plays directly to my frontend background — it's exactly the kind of hard interface problem I want to own. Once the text-surface retrofit is solid, extend into:
-- **Speech-to-speech and realtime interaction** — low-latency voice agents.
-- **Interruption / barge-in and turn-taking** — letting the user talk over the agent and handing control back cleanly.
-- **Partial transcripts and live "thinking" cues** — both audio and visual.
-- **Multimodal I/O** — vision input, image and audio output.
-- **Latency budgets for realtime** — where "fast enough" is a hard requirement, not a nicety.
+## Voice & realtime (explored — closed)
+Built through OpenAI Realtime (lessons 0010–0021): lifecycle, barge-in, transcripts, latency/VAD, mode switch, handoff, tools, HITL, multimodal in/out. **Product finding:** Realtime speech-to-speech is not a surface I'd ship — unreliable STT and unusable image output. Keep Research text as the product; voice stays a lab probe at most. Transferable patterns are recorded in the voice arc checklist / LR-0024.
 
-Primary tool: OpenAI Realtime API (speech-to-speech, low-latency voice agents).
+## Next horizon
+Open — pick after the voice wrap-up. Candidates: deepen the text Research product (agents / tool HITL, personal workflows), a non-Realtime multimodal path, or ship something personal with the Phase 2 text baseline.
 
 ## Constraints
 - **Time:** ~20 min per lesson — one tangible win per session.

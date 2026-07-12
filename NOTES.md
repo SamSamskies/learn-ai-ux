@@ -29,22 +29,23 @@
 - Lesson 0009 audit completed; portfolio artifact (`docs/UX-RETROFIT.md`) skipped by choice.
 - Motivation: personal AI apps + open source contribution, not job hunting. Skip interview/demo-script framing.
 
-## Phase 2 voice & realtime arc (lesson 0010+)
-- Primary tool: OpenAI Realtime API (WebRTC in browser).
-- Lesson 0010 shipped: `/voice` probe with phase reducer, connection error mapping, `output_audio_buffer` handling for speaking→idle.
-- Audio hygiene that fixed choppy responses: client `echoCancellation` + `noiseSuppression` + `autoGainControl`; server `noise_reduction: { type: 'far_field' }`. Default for future voice builds.
-- Lesson 0011 shipped: partial transcripts — user confirmation after VAD commit, assistant stream during speaking.
-- Lesson 0012 shipped: barge-in UX — interrupted turn flag, explicit `response.cancel` button, preserve/mark pattern from text stopped. Phase reducer needed a fix for explicit interrupt (likely `output_audio_buffer.cleared` / `response_cancel_not_active`).
-- Lesson 0013 shipped: turn-latency readout; `silence_duration_ms: 500` feels right for snappy Q&A (validated against budget).
-- Lesson 0014 shipped: voice in main app — mode switch (Research | Voice), shared chrome, mic entry, research-flavored session instructions. Switching after work begins now requires confirmation because route-local chat state is destroyed. Do NOT merge Realtime into useChat.
-- Lesson 0015 shipped: Voice → Research handoff — carry recent transcript context through a one-shot same-tab buffer and seed the Research composer for review; still tear down Realtime intentionally.
-- Lesson 0016 shipped: Semantic VAD config + legible turn-detection label. Learner found no win over server_vad at 500 ms — revert default to server_vad; keep centralized config file.
-- Lesson 0017 shipped: Voice + image context — attach resized JPEG via `conversation.item.create`, thumbnail in UI, ask aloud; handoff stays text-only for v1. Voice page layout refactored so session dock / attach strip no longer crowd the center transcript.
-- Lesson 0016 semantic VAD finding captured in LR-0018 — default stays server_vad at 500 ms.
-- Lesson 0018 shipped: `lookup_definition` Realtime tool — auto-run with "Looking up…" label + transcript system line. Tool loop pattern established (LR-0020).
-- Lesson 0019 shipped: voice tool approval — gate `stage_research_brief`; lookup stays auto-run.
-- Learner finds Realtime STT unreliable ("hardly ever understands") — bias toward confirm/edit-on-screen for spoken tool args; don't oversell voice for precise prompts.
-- Lesson 0020 next: multimodal output — voice-triggered image gen with editable prompt gate, then show result in transcript ("voice for the headline, screen for the picture").
+## Phase 2 voice & realtime arc (lessons 0010–0021) — closed
+- Primary tool tried: OpenAI Realtime API (WebRTC in browser).
+- Lesson 0010: `/voice` probe with phase reducer, connection error mapping, `output_audio_buffer` for speaking→idle.
+- Audio hygiene: client `echoCancellation` + `noiseSuppression` + `autoGainControl`; server `noise_reduction: { type: 'far_field' }`.
+- Lesson 0011: partial transcripts — user confirmation after VAD commit, assistant stream during speaking.
+- Lesson 0012: barge-in UX — interrupted turn flag, explicit `response.cancel`, preserve/mark pattern.
+- Lesson 0013: turn-latency readout; `silence_duration_ms: 500` for snappy Q&A.
+- Lesson 0014: mode switch (Research | Voice), shared chrome; confirm before switch destroys route-local state. Do NOT merge Realtime into useChat.
+- Lesson 0015: Voice → Research handoff — one-shot buffer seeds Research composer; tear down Realtime.
+- Lesson 0016 / LR-0018: semantic VAD no win — default stays `server_vad` at 500 ms; keep centralized config.
+- Lesson 0017: voice + image context (attach JPEG, thumbnail); handoff text-only v1.
+- Lesson 0018: `lookup_definition` auto-run tool loop (LR-0020).
+- Lesson 0019: gate `stage_research_brief`; lookup stays auto-run. LR-0022: STT unreliable — confirm/edit on screen.
+- Lesson 0020 / LR-0023: voice image output gated + editable — results unusable; wouldn't ship.
+- Lesson 0021 / LR-0024: wrap-up — **OpenAI Realtime voice is not a product surface**; Research text remains the product. Checklist: `reference/voice-arc-checklist.html`.
 
 ## Future topics (backlog)
-- **Voice arc wrap-up** — audit voice surface against mission checklist (after multimodal output).
+- Deepen text Research (agents / tool HITL on text, personal workflows).
+- Non-Realtime multimodal (if quality bar can be cleared without S2S).
+- Ship something personal with Phase 2 text baseline; pause new arcs if preferred.

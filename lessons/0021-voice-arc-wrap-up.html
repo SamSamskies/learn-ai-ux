@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0021 · Voice Arc Wrap-Up</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Phase 2 <span class="dot">·</span> Lesson 0021</p>
+  <h1>Voice Arc Wrap-Up</h1>
+  <p class="dek">Eleven builds later: you know how Realtime UX is supposed to work — and you've decided OpenAI's realtime voice models aren't worth shipping. This lesson closes the arc: audit the patterns, lock the verdict, move on.</p>
+
+  <h2>Why this, why now</h2>
+  <p>Mission success isn't "I tried every API." It's <strong>I can design interfaces over nondeterministic AI — and I know when the stack fails the product bar.</strong> Text retrofit raised the research assistant. Voice taught the harder constraints (turn-taking, latency, STT loss, multimodal companions). The honest outcome: polish cannot rescue unreliable speech-to-speech.</p>
+  <p>Image output sealed it — gated prompts, cheap models, still results you wouldn't use. That's product judgment, not a failed lesson.</p>
+
+  <div class="callout key">
+    <span class="label">The arc in one breath</span>
+    <p><strong>Lifecycle &amp; turns</strong> (0010–0013, 0016) → <strong>Product shell</strong> (0014–0015) → <strong>Multimodal &amp; tools</strong> (0017–0020). Through-line: voice for the headline, screen for precision — and escape to Research when STT or quality fails.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="label">Product verdict</span>
+    <p><strong>OpenAI Realtime voice is not a product surface for your apps.</strong> Keep <code>/voice</code> as a lab if you want; don't invest more cycles chasing speech-to-speech quality on this stack. Research text remains the thing you'd actually use.</p>
+  </div>
+
+  <div class="source">
+    <span class="label">Primary source (skim)</span>
+    <a href="../reference/voice-arc-checklist.html">Voice arc checklist</a> — audit what shipped, then the "what transfers" list. Optional skim: <a href="https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns">AI Design Patterns · Voice</a> ("when voice needs a visual companion") — you already lived that constraint.
+  </div>
+
+  <h2>Do this (~15 min)</h2>
+
+  <ol class="steps">
+    <li>
+      <p><strong>Run the checklist once.</strong> Open the <a href="../reference/voice-arc-checklist.html">voice arc checklist</a> beside the app. Mark what you actually shipped. You're not chasing a perfect score — you're confirming the lab is complete.</p>
+    </li>
+
+    <li>
+      <p><strong>Name one pattern you'd reuse on text (or the next surface).</strong> Pick from memory, then check the checklist's "What transfers" list. Examples that usually stick:</p>
+      <ul>
+        <li>Split-by-risk tool approval (auto lookup vs gate side effects)</li>
+        <li>Confirm before destroying route-local state</li>
+        <li>Handoff that lands in an editable composer, never auto-runs</li>
+        <li>Don't trust STT / lossy input for irreversible or expensive actions</li>
+      </ul>
+    </li>
+
+    <li>
+      <p><strong>Decide the fate of <code>/voice</code> (one sentence).</strong> Leave it as a probe, hide it, or delete later — your call. Write the sentence somewhere you'll see it (NOTES, a code comment, or just tell me). Default recommendation: <em>leave the probe; don't build on it.</em></p>
+    </li>
+
+    <li>
+      <p><strong>Self-grade with retrieval.</strong> Cover the checklist, recall without peeking:</p>
+      <ul>
+        <li>Why <code>silence_duration_ms: 500</code> beat semantic VAD for your Q&amp;A use case</li>
+        <li>Why image prompts (and research briefs) need an on-screen edit gate</li>
+        <li>What still completes after the user rejects a Realtime tool call</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h2>What you keep vs what you drop</h2>
+  <table>
+    <thead>
+      <tr><th>Keep (transfers)</th><th>Drop (this stack)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Phase UI, barge-in preserve/mark, latency measurement, mode-loss guards, handoff + edit, split-by-risk tools</td>
+        <td>Betting the product on OpenAI Realtime S2S; voice-triggered image gen as a featured flow</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What's next</h2>
+  <p>The voice &amp; realtime horizon in the mission is <strong>explored and closed</strong> with a negative product finding — that's a valid close. Text Research is still the surface that matches "apps I'd actually use."</p>
+  <p>Next session options (pick one when you're ready): deepen the text product (agents/tool HITL on Research, better trust, personal workflows), a different multimodal path that isn't Realtime voice, or pause Phase 2 and ship something personal with what you have.</p>
+
+  <div class="callout">
+    <span class="label">Phase 2 voice arc — closed</span>
+    <p>You can map realtime lifecycle, barge-in, transcripts, latency, mode switch, handoff, and tool approval — and you can say no when the model quality doesn't clear the bar. That's the frontend edge: shipped judgment, not endless API tourism.</p>
+  </div>
+
+  <h2>Self-check</h2>
+  <details class="selfcheck">
+    <summary>Did the voice arc fail?</summary>
+    <p>No. You learned the interaction design and proved the stack isn't product-ready for you. A wrap-up that ends in "don't ship this" is success — false optimism would be the failure.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>Should I delete all the Realtime code?</summary>
+    <p>Not required. A dormant probe is fine documentation of what you tried. Delete only if it clutters the product you use daily.</p>
+  </details>
+  <details class="selfcheck">
+    <summary>What if another provider's voice is better later?</summary>
+    <p>Reuse the checklist patterns; don't reuse the "trust STT / auto-generate images" assumptions. Re-evaluate quality the same way you did here.</p>
+  </details>
+
+  <div class="ask">
+    <strong>I'm your teacher — tell me your one transferable pattern and what you want next.</strong> Voice arc is done. Ask anything that was still fuzzy from 0010–0020, or name the next build you care about.
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="0020-voice-image-output.html">← 0020: Voice image output</a></span>
+    <span><a href="../reference/voice-arc-checklist.html">Reference: voice checklist</a></span>
+    <span>Next: your call</span>
+  </div>
+</div>
+</body>
+</html>

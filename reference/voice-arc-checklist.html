@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Voice Arc Checklist</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">AI Product UX <span class="dot">·</span> Reference</p>
+  <h1>Voice Arc Checklist</h1>
+  <p class="dek">Eleven lessons on OpenAI Realtime. Use this to audit what you built — and to remember the product verdict: patterns ship; this voice stack does not (for your apps).</p>
+
+  <div class="callout warn">
+    <span class="label">Product verdict (learner)</span>
+    <p>OpenAI Realtime speech-to-speech is <strong>not</strong> a surface you'd ship. STT is unreliable; image output via the voice path isn't usable. Keep voice as a lab probe. Research text remains the product.</p>
+  </div>
+
+  <h2>Realtime lifecycle &amp; turn-taking</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Pass when…</th><th>Lesson</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Phase map</strong></td>
+        <td>Connecting / listening / thinking / speaking / interrupted / error each have distinct UI; <code>output_audio_buffer</code> drives speaking→idle</td>
+        <td><a href="../lessons/0010-realtime-lifecycle-map.html">0010</a></td>
+      </tr>
+      <tr>
+        <td><strong>Partial transcripts</strong></td>
+        <td>User confirmation after VAD commit; assistant text streams during speaking</td>
+        <td><a href="../lessons/0011-partial-transcripts.html">0011</a></td>
+      </tr>
+      <tr>
+        <td><strong>Barge-in</strong></td>
+        <td>Interrupted turn marked; explicit cancel; preserve/mark like text stopped</td>
+        <td><a href="../lessons/0012-barge-in-turn-taking.html">0012</a></td>
+      </tr>
+      <tr>
+        <td><strong>Latency budget</strong></td>
+        <td>End-of-speech → first audio measured; <code>server_vad</code> ~500&nbsp;ms silence feels right for Q&amp;A</td>
+        <td><a href="../lessons/0013-latency-budget-vad.html">0013</a></td>
+      </tr>
+      <tr>
+        <td><strong>Semantic VAD tried</strong></td>
+        <td>Config centralized; default stays <code>server_vad</code> after no product win</td>
+        <td><a href="../lessons/0016-semantic-vad-turn-boundaries.html">0016</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Productization</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Pass when…</th><th>Lesson</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Mode switch</strong></td>
+        <td>Shared chrome; Research | Voice; confirm before switch destroys route-local state</td>
+        <td><a href="../lessons/0014-voice-in-main-app.html">0014</a></td>
+      </tr>
+      <tr>
+        <td><strong>Handoff</strong></td>
+        <td>Transcript seeds Research composer for edit — never auto-send; Realtime tears down</td>
+        <td><a href="../lessons/0015-voice-to-research-handoff.html">0015</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Tools, multimodal, HITL</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Pass when…</th><th>Lesson</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Image in</strong></td>
+        <td>Attach resized JPEG; thumbnail visible; ask aloud; handoff stays text-only (v1)</td>
+        <td><a href="../lessons/0017-voice-image-context.html">0017</a></td>
+      </tr>
+      <tr>
+        <td><strong>Session tools</strong></td>
+        <td>Auto-run low-risk tools with a dock label + transcript system line</td>
+        <td><a href="../lessons/0018-voice-session-tools.html">0018</a></td>
+      </tr>
+      <tr>
+        <td><strong>Tool approval</strong></td>
+        <td>Side effects gated; lookups auto; reject still completes the function-call loop</td>
+        <td><a href="../lessons/0019-voice-tool-approval.html">0019</a></td>
+      </tr>
+      <tr>
+        <td><strong>Image out</strong></td>
+        <td>Editable prompt gate before Images API; picture on screen, caption in voice</td>
+        <td><a href="../lessons/0020-voice-image-output.html">0020</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What transfers (even if you delete <code>/voice</code>)</h2>
+  <ul>
+    <li><strong>Phase reducers</strong> for nondeterministic waits — same discipline as text lifecycle.</li>
+    <li><strong>Preserve + mark interrupted</strong> turns instead of discarding partial work.</li>
+    <li><strong>Measure latency</strong> before tuning VAD / timeouts by feel.</li>
+    <li><strong>Mode switch = state loss</strong> — confirm when tearing down local session state.</li>
+    <li><strong>Handoff with edit-before-send</strong> when crossing modalities or precision boundaries.</li>
+    <li><strong>Split-by-risk tools</strong> — auto-run cheap/safe; gate cost, side effects, creative prompts.</li>
+    <li><strong>Don't bet UX on STT</strong> — confirm/edit on screen for anything that must be exact.</li>
+  </ul>
+
+  <h2>Audio hygiene (defaults if you ever reopen the probe)</h2>
+  <p>Client: <code>echoCancellation</code> + <code>noiseSuppression</code> + <code>autoGainControl</code>. Server: <code>noise_reduction: { type: 'far_field' }</code>. Default VAD: <code>server_vad</code>, <code>silence_duration_ms: 500</code>.</p>
+
+  <div class="source">
+    <span class="label">Primary docs (archive)</span>
+    <a href="https://developers.openai.com/api/docs/guides/voice-agents">OpenAI · Voice agents</a> ·
+    <a href="https://www.aiuxdesign.guide/guides/conversational-ui-guide/voice-interface-design-patterns">AI Design Patterns · Voice</a>
+  </div>
+
+  <div class="lesson-nav">
+    <span><a href="multimodal-voice-output.html">← Multimodal output</a></span>
+    <span><a href="../lessons/0021-voice-arc-wrap-up.html">Lesson 0021</a></span>
+    <span><a href="retrofit-checklist.html">Text checklist →</a></span>
+  </div>
+</div>
+</body>
+</html>
